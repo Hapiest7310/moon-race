@@ -1,0 +1,30 @@
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 600
+SCREEN_TITLE = "Moon Race"
+
+COLOR_BACKGROUND = (20, 20, 40)
+
+FRAME_WIDTH = 64
+FRAME_HEIGHT = 64
+FRAME_COUNT = 32
+ANIMATION_SPEED_MS = 80
+
+MOON_SPRITESHEET = "assets/images/MOON.png"
+MOON_SCALE = 2.0
+
+BUTTON_WIDTH = 200
+BUTTON_HEIGHT = 50
+BUTTON_SPACING = 70
+
+
+def get_screen_center():
+    return SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2
+
+
+def get_button_start_position():
+    return SCREEN_WIDTH // 2 - BUTTON_WIDTH // 2, SCREEN_HEIGHT // 2
+
+
+def get_moon_position():
+    scaled_h = int(FRAME_HEIGHT * MOON_SCALE)
+    return SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - scaled_h // 2 - BUTTON_HEIGHT - BUTTON_SPACING

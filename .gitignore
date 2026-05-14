@@ -22,5 +22,12 @@ Thumbs.db
 # Game assets (optional - remove if you want to track assets)
 # assets/
 
-# Plugins (optional - remove if you want to track plugins)
-# plugins/
+# Plugins (reference only - not tracked)
+plugins/
+
+# Documentation (internal)
+INSTRUCTIONS.md
+RESOURCES.md
+
+# Project assignment spec
+ISE APUD2F2509.pdf
