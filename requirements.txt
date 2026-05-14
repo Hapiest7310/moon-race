@@ -1,0 +1,4 @@
+pygame-ce==2.5.7
+pygame-menu==4.5.2
+pyperclip==1.11.0
+typing_extensions==4.15.0

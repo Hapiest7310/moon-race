@@ -5,7 +5,7 @@
 **Course:** CT029-3-2 Imaging and Special Effects  
 **Assignment:** Interactive Game Artifact with Special Effects  
 **Theme:** Moon  
-**Engine:** Pygame (2D)  
+**Engine:** Pygame CE 2.5.7 (2D)  
 **Team Size:** 4 students  
 **Weight:** 60% of module  
 
@@ -28,135 +28,97 @@
 
 ## Current Project State
 
-### Done
-- Pygame window (800×600, 60 FPS) > should be full screen. 
-- Main menu with animated moon (32-frame spritesheet)
-- Level select menu (2 stub entries)
-- Options menu (non-functional toggles)
-- `AnimatedSprite` class for spritesheet animation
-- Moon spritesheet (`MOON.png`)
-- Droid Zapper enemy sprites (attack, run, wake, death)
-- Pixel planet generator tool
-- Virtual environment with pygame, pygame_menu, pygame-ce
+### Done (code infrastructure)
+- [x] Fullscreen 1920×1080 window at 60 FPS
+- [x] State machine: `MENU → TRANSITION → PLAYING → (ESC) → MENU`
+- [x] Menu system with 3 submenus (Start → Load/New/Back, Options → Keybindings/Sound/Back, Quit)
+- [x] Loading spinner (spinning moon, event-driven `start/stop` API)
+- [x] `AnimatedSprite` class for spritesheet animation
+- [x] `pygame_menu`-based overlay HUD with multi-line debug output
+- [x] **Light Side level** (`level_light.py`):
+  - Grid system (bottom-left origin, 32px cells, 60×33 grid)
+  - Color picker widget (8 colors, local coordinates)
+  - Cell painting (click to paint, hover to highlight)
+  - Layer separation (widget layer vs grid layer)
+  - Debug overlay (FPS, mouse coords, hover, widget state, cell count, grid info)
+- [x] **Dark Side level** stub (`level_dark.py`)
+- [x] Widget system (`src/widget/`: base class + ColorPicker)
+- [x] Comprehensive debug system (master toggle + 10 sub-flags)
+- [x] Virtual environment with `pygame-ce`, `pygame_menu`
+- [x] Moon spritesheet (`MOON.png`) and Droid Zapper enemy sprites
+- [x] Moon animation fix (update call in main loop)
+- [x] Pixel planet generator tool
 
 ### Missing (needs implementation)
-- Game loop (playing state separate from menu)
 - Player character (movement, abilities, health)
-- Two full game levels
+- Dark Side level gameplay (Asteroids-mining style)
+- City-builder mechanics for Light Side level
 - Enemies / obstacles / AI
 - Collision detection
-- Particle effects (spore burst, healing aura, glowing cap)
+- Particle effects (spore burst, healing aura, glowing cap, comet trail, solar flare)
 - Audio (BGM, SFX)
 - Fonts
 - Score / progression / win-lose conditions
 - Level transition logic
-- Fix: moon animation update is never called in main loop
-> how about the light side of the moon level will be about builing a city and dark side of the moon will be for collecting resourses by mining asteroids. so the dark level will be a asteroids style minigame and the light level will be something like https://flori9.itch.io/the-final-earth-2. light level should be 2d, pixel stile 
----
-
-## Deliverables
-
-| # | Item | Owner | Due |
-|---|------|-------|-----|
-| 1 | Narrative storyboard (written) | | |
-| 2 | Game levels (code + logic) | | |
-| 3 | Visual assets (all sprites, backgrounds, particles) | | |
-| 4 | Audio assets (BGM + SFX) | | |
-| 5 | Special effects integration | | |
-| 6 | Working game executable | | |
-| 7 | PDF report | | |
-| 8 | Video demo (5–7 min) | | |
+- Screen shake, parallax scrolling, camera effects
 
 ---
 
-## Architecture
+## Architecture (current)
 
 ```
-main.py                     ← entry point, orchestrates menus → game
+main.py                     ← entry point (init, fullscreen, launch App)
 src/
 ├── __init__.py
-├── config.py               ← constants, paths, colors
-├── menu.py                 ← main / options / level select menus
+├── config.py               ← constants, debug flags, FPS accessor
+├── app.py                  ← state machine (MENU → TRANSITION → PLAYING)
+├── menu.py                 ← pygame_menu UI (Start, Options, Quit)
 ├── sprites.py              ← AnimatedSprite class
-├── player.py               ← Player character (movement, abilities, health)
-├── enemy.py                ← Enemy base class + droid variant
-├── particles.py            ← Particle system (burst, aura, glow)
-├── camera.py               ← Screen shake, parallax scrolling
-├── game.py                 ← Game loop, state machine, collision
-├── levels/
-│   ├── __init__.py
-│   ├── level_base.py       ← Base level class
-│   ├── level_1.py          ← Dark Side of the Moon
-│   └── level_2.py          ← Light Side of the Moon
+├── spinner.py              ← module-level loading spinner singleton
+├── grid.py                 ← bottom-left origin grid (Light Side)
+├── widget/
+│   ├── __init__.py         ← Widget base class
+│   └── color_picker.py     ← 8-color palette widget
+└── levels/
+    ├── __init__.py
+    ├── level_base.py       ← abstract Level interface
+    ├── level_light.py      ← Light Side (city-builder)
+    └── level_dark.py       ← Dark Side stub (Asteroids-style)
 assets/
 ├── images/
 │   ├── MOON.png            ← main menu moon spritesheet
-│   ├── player/             ← player sprites
-│   ├── backgrounds/        ← level backgrounds
-│   ├── enemies/            ← enemy sprites (droid zapper, etc.)
-│   ├── particles/          ← particle textures
-│   └── tiles/              ← terrain / obstacle tiles
+│   ├── player/             ← player sprites (empty)
+│   ├── backgrounds/        ← level backgrounds (empty)
+│   ├── enemies/            ← Droid Zapper sprite sheets
+│   ├── particles/          ← particle textures (empty)
+│   └── tiles/              ← terrain / obstacle tiles (empty)
 ├── sounds/
-│   ├── bgm/                ← background music
-│   └── sfx/                ← sound effects
-└── fonts/                  ← custom fonts
-levels/                     ← (move to src/levels/ or keep as symlink)
+│   ├── bgm/                ← background music (empty)
+│   └── sfx/                ← sound effects (empty)
+└── fonts/                  ← custom fonts (empty)
 ```
-
----
-
-## Narrative Storyboard
-
-> To be written by the team. Suggested outline:
-
-### Characters
-- **Main character:** Astronaut / Moon Rover (player-controlled)  
-  Abilities: jump, dash, shoot moon crystals, heal
-- **Enemies:** Droid Zappers, Comet Spores, Shadow Moons
-- **Boss:** ???
-
-### Abilities
-- Movement: left/right, jump, double-jump
-- Attack: crystal projectile (with particle burst on impact)
-- Special: healing aura (restores health over time)
-- Environmental interaction: glowing platforms, gravity zones
-
-### Environment
-- **Level 1 — Dark Side of the Moon**  
-  Dark, crater-filled terrain. Low gravity. Comet obstacles. Glowing crystal platforms.
-- **Level 2 — Light Side of the Moon**  
-  Bright lunar surface. Solar flares. Reflective surfaces. Boss arena.
-
-### Plot
-> A rogue comet has shattered the Moon Crystal, scattering its fragments across the lunar surface. The player must race through the Dark Side and Light Side to recover the fragments before the comet returns.
-
-### Mechanics
-- Comet collision → floor fracture (environmental hazard)
-- Spore burst enemies → release poison clouds
-- Healing aura → restore health in safe zones
-- Glowing cap → temporary invincibility / damage boost
 
 ---
 
 ## Level Design
 
-### Level 1: Dark Side of the Moon
+### Level 1 (Dark Side of the Moon) — Asteroids-mining
 - **Environment:** Dark, starry background, craters, dim glowing crystals
 - **Obstacles:** Craters (pits), falling comets, spore enemies
-- **Goal:** Collect 5 moon crystal fragments, reach the portal
+- **Goal:** Collect moon crystal fragments by mining asteroids
 - **Special effects:** Comet particle trail, spore burst on enemy death, glowing crystal platforms
-- **Length:** ~2–3 min gameplay
+- **Status:** Stub — fill `level_dark.py`
 
-### Level 2: Light Side of the Moon
-- **Environment:** Bright surface, solar corona in background, reflective metal platforms
-- **Obstacles:** Solar flares (timed hazards), laser turrets, boss enemy
-- **Goal:** Defeat the boss, collect final crystal fragment
-- **Special effects:** Solar flare glow + screen flash, boss attack particles, healing aura zones
-- **Length:** ~3–5 min gameplay
+### Level 2 (Light Side of the Moon) — City-builder (inspired by The Final Earth 2)
+- **Environment:** Bright surface, solar corona in background, 32px grid system
+- **Obstacles:** Solar flares (timed hazards), resource constraints
+- **Goal:** Build a lunar city, manage resources, survive hazards
+- **Current features:** Grid with bottom-left origin, color picker widget, cell painting, debug overlay
+- **Needs:** Building placement, resource system, NPCs, win/lose conditions
 
 ---
 
-## Special Effects (required by brief)
+## Special Effects (required by brief — all TODO)
 
 | Effect | Where | Technique |
 |--------|-------|-----------|
@@ -167,50 +129,22 @@ levels/                     ← (move to src/levels/ or keep as symlink)
 | Solar flare | L2 timed hazard | Full-screen overlay with radial gradient, flashing opacity |
 | Screen shake | Collisions / explosions | Offset camera randomly for ~200ms on impact |
 | Parallax scrolling | Both levels | Multiple background layers at different scroll speeds |
-| Moon rotation | Main menu (already have spritesheet) | Fix update call so animation actually plays |
-
----
-
-## Audio Plan
-
-### Background Music
-- Main menu: ambient space drone
-- Level 1: dark, tense lunar theme
-- Level 2: bright, energetic theme
-- Boss: intense combat track
-
-### Sound Effects
-- Player jump, dash, shoot
-- Enemy hit, death (spore burst)
-- Crystal collect
-- Comet impact
-- Healing aura activation
-- UI button click
-- Win / lose jingles
-
----
-
-## Workload Breakdown (4 students)
-
-| Student | Primary Responsibilities |
-|---------|------------------------|
-| **A** | Player controller, game loop, collision, physics |
-| **B** | Level 1 design, spore burst + comet effects, enemies AI |
-| **C** | Level 2 design, solar flare + healing aura effects, boss AI |
-| **D** | Audio (BGM + SFX), particle system framework, fonts, UI polish, video demo |
 
 ---
 
 ## Milestones
 
-### Sprint 1 — Foundation
-- [ ] Fix moon animation bug (call `update(dt)` in main loop)
-- [ ] Create player class with movement & basic collision
-- [ ] Create `game.py` state machine (MENU → PLAYING → PAUSED → GAMEOVER)
-- [ ] Particle system base
-- [ ] Audio manager base
+### Sprint 1 — Foundation (DONE)
+- [x] Fix moon animation bug (call `update(dt)` in main loop)
+- [x] Create menu system with Start, Options, Quit
+- [x] Create App state machine (MENU → TRANSITION → PLAYING)
+- [x] Loading spinner API
+- [x] Grid system with bottom-left origin
+- [x] Widget system with ColorPicker
+- [x] Light Side level scaffold (grid + paint + debug)
+- [x] Debug system (10 flags + FPS + overlay HUD)
 
-### Sprint 2 — Level 1
+### Sprint 2 — Level 1 (Dark Side)
 - [ ] Level 1 environment (background, terrain, platforms)
 - [ ] Droid Zapper enemy AI
 - [ ] Comet obstacle + particle trail
@@ -218,12 +152,12 @@ levels/                     ← (move to src/levels/ or keep as symlink)
 - [ ] Crystal fragment collectibles
 - [ ] Level 1 complete → Level 2 transition
 
-### Sprint 3 — Level 2
-- [ ] Level 2 environment (background, platforms, hazards)
+### Sprint 3 — Level 2 (Light Side)
+- [ ] City-builder mechanics (building placement, resources)
 - [ ] Solar flare timed hazard + glow effect
 - [ ] Healing aura zones
 - [ ] Glowing cap power-up
-- [ ] Boss enemy + attack patterns
+- [ ] NPCs / population system
 
 ### Sprint 4 — Polish & Deliverables
 - [ ] Audio integration (all BGM + SFX)
@@ -238,8 +172,10 @@ levels/                     ← (move to src/levels/ or keep as symlink)
 
 ## Technical Notes
 
-- **Pygame CE** (`pygame-ce`) is installed alongside regular `pygame` — prefer `pygame-ce` features (blend modes, improved blitting, built-in shapes)
-- `pygame_menu` handles UI; can be extended with custom widgets
-- Spritesheet slicing already implemented in `AnimatedSprite` — reuse for player, enemies, effects
-- No requirements.txt exists yet — create one from current venv before submission
-- Commit frequently, one feature per commit
+- **Pygame CE** only (`pygame-ce` 2.5.7) — do NOT install `pygame` alongside it (causes SDL blit conflicts)
+- `pygame_menu` handles UI menus and the in-game overlay HUD
+- Spritesheet slicing via `AnimatedSprite.subsurface()` — reuse for player, enemies, effects
+- All widget coordinates are **local** (relative to widget rect) — only convert to absolute at draw time
+- Grid uses **bottom-left origin** (gy=0 at screen bottom, y increases upward)
+- Debug system: master `debug` flag in `config.py` — set to `False` to disable all debug output
+- `requirements.txt` includes: `pygame-ce`, `pygame-menu`, `pyperclip`, `typing-extensions`
