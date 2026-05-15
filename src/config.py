@@ -20,6 +20,27 @@ GRID_CELL_SIZE = 32
 GRID_COLS = SCREEN_WIDTH // GRID_CELL_SIZE
 GRID_ROWS = SCREEN_HEIGHT // GRID_CELL_SIZE
 
+STARTING_MONEY = 1000
+SAVE_DIR = "saves"
+SAVE_FILE = "light_side_save.json"
+
+BUILDING_TYPES = [
+    {"name": "Foundation", "w": 1, "h": 1, "cost": 10,  "color": (139, 90, 43)},
+    {"name": "Wall",       "w": 2, "h": 1, "cost": 50,  "color": (100, 100, 100)},
+    {"name": "Tower",      "w": 1, "h": 2, "cost": 50,  "color": (70, 70, 90)},
+    {"name": "House",      "w": 2, "h": 2, "cost": 100, "color": (160, 82, 45)},
+    {"name": "Workshop",   "w": 3, "h": 2, "cost": 200, "color": (180, 120, 60)},
+    {"name": "Mansion",    "w": 3, "h": 3, "cost": 300, "color": (100, 149, 237)},
+    {"name": "Palace",     "w": 4, "h": 4, "cost": 500, "color": (218, 165, 32)},
+    {"name": "Observatory","w": 2, "h": 4, "cost": 400, "color": (147, 112, 219)},
+]
+
+MUSIC_DIR = "music"
+
+AUDIO_ENABLED = True
+DEFAULT_MUSIC_VOLUME = 0.5
+DEFAULT_SFX_VOLUME = 0.7
+
 debug = True
 debug_mouse = True
 debug_grid = True
@@ -31,8 +52,10 @@ debug_hover = True
 debug_cells = True
 debug_layout = True
 debug_menu = True
+debug_audio = True
 
 _fps = 0
+_save_name = "default"
 
 
 def set_fps(v):
@@ -42,6 +65,15 @@ def set_fps(v):
 
 def get_fps():
     return _fps
+
+
+def set_save_name(name):
+    global _save_name
+    _save_name = name
+
+
+def get_save_name():
+    return _save_name
 
 
 def get_screen_center():

@@ -2,10 +2,13 @@ import pygame
 from src.menu import create_menus, get_main_menu
 from src import config
 from src.app import App
+from src import audio
 
 
 def main():
     pygame.init()
+    audio.init()
+    audio.load_all()
 
     surface = pygame.display.set_mode(
         (config.SCREEN_WIDTH, config.SCREEN_HEIGHT),
