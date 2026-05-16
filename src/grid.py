@@ -22,7 +22,7 @@ class Grid:
         return 0 <= gx < self.cols and 0 <= gy < self.rows
 
     def draw(self, surface):
-        if not (config.debug and config.debug_grid):
+        if not (config.show_grid or (config.debug and config.debug_grid)):
             return
         grid_bottom = config.SCREEN_HEIGHT
         grid_top = config.SCREEN_HEIGHT - self.rows * self.cell_size
