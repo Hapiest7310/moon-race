@@ -32,29 +32,33 @@ src/
 └── levels/
     ├── __init__.py
     ├── level_base.py     ← Abstract Level interface
-    ├── level_light.py    ← Light Side (city-builder, buildings, save/load)
-    └── level_dark.py     ← Dark Side stub (Asteroids-style)
+    ├── level_light.py    ← Light Side (city-builder, buildings, save/load, drop animation)
+    └── level_dark.py     ← Dark Side (Asteroids clone with shader-like effects)
 ```
 
 ---
 
 ### State Machine
 
-Managed by `App` in `app.py`. Four states:
+Managed by `App` in `app.py`. Five states:
 
 | State | Entry | Method | What happens |
 |-------|-------|--------|-------------|
 | `MENU` | Boot | `_update_menu()` | Moon sprite animates, pygame_menu handles navigation |
 | `TRANSITION` | New / Load confirmed | `_update_transition()` | Spinner active (2s), then creates LevelLight |
-| `PLAYING` | After transition | `_update_playing()` | Delegates `handle_event` / `update` / `draw` to level; ESC → PAUSED |
+| `PLAYING` | After transition | `_update_playing()` | Delegates to level; ESC → PAUSED. Also handles **minigame** switching (dark side mining) |
 | `PAUSED` | ESC in gameplay | `_update_paused()` | Level dims, pause menu overlay; ESC/Continue → PLAYING, Quit → MENU |
+
+When in minigame mode (dark side), `_update_playing` calls `_update_minigame()` instead, which runs LevelDark's loop and auto-exits back to the saved light level when done.
 
 Transitions:
 ```
 MENU → (New/Load) → TRANSITION → (timer) → PLAYING ↔ (ESC) → PAUSED
-                                                 ↑               │
-                                                 └─── Quit ──────┘
-                                                      (ESC/Continue)
+                                                  ↑               │
+                                                  └─── Quit ──────┘
+                                                       (ESC/Continue)
+                                                       
+PLAYING (light) → [Mine button] → minigame (dark) → [ESC/game over] → PLAYING (light, +coins)
 ```
 
 ---
@@ -83,8 +87,11 @@ Audio initialisation (`audio.init()`, `audio.load_all()`) happens before the dis
 | `MUSIC_DIR` | `"music"` |
 | `AUDIO_ENABLED` | Master audio toggle |
 | `DEFAULT_MUSIC_VOLUME` / `DEFAULT_SFX_VOLUME` | 0.5 / 0.7 |
+| `DROP_ANIMATION_MS` | 500 — duration of building placement drop animation |
+| `DARK_COUNTDOWN_SECONDS` | 3 — countdown before dark side mining starts |
 | `set_save_name(name)` / `get_save_name()` | Mutable current save slot |
 | `set_fps(v)` / `get_fps()` | Stores/runs current FPS |
+| `set_mine_requested(v)` / `get_mine_requested()` | Flag for light→dark side transition |
 
 #### Debug flags
 
@@ -141,12 +148,15 @@ All functions are safe to call even if `AUDIO_ENABLED = False` or `mixer.init()`
 
 | Method | Purpose |
 |--------|---------|
-| `__init__(surface)` | Stores surface + clock, creates moon sprite, initialises spinner |
+| `__init__(surface)` | Stores surface + clock, creates moon sprite, initialises spinner, sets up minigame tracking |
 | `run()` | Main loop: collect events, dispatch to state method, update spinner, flip display |
 | `_update_menu(dt, events)` | Moon animation + menu processing; checks for NEW/LOAD action to start transition |
-| `_update_transition(dt, events)` | 2s countdown, then creates `LevelLight(surface, save_name)` and starts BGM |
-| `_update_playing(dt, events)` | Delegates to level's handle/update/draw; ESC → open pause menu, state = PAUSED |
-| `_update_paused(dt, events)` | Draws level + 128-alpha dim overlay; processes pause menu; ESC/Continue → PLAYING, Quit → MENU |
+| `_update_transition(dt, events)` | 2s countdown, then creates LevelLight/LevelDark and starts BGM |
+| `_update_playing(dt, events)` | Delegates to level; checks for minigame flag / mine request |
+| `_enter_minigame()` | Saves current light level, creates LevelDark(minigame=True), sets minigame flag |
+| `_exit_minigame()` | Transfers dark side score as coins to light level, restores saved level |
+| `_update_minigame(dt, events)` | Runs LevelDark's loop; auto-exits when `is_minigame_done()` returns True |
+| `_update_paused(dt, events)` | Draws level + 128-alpha dim overlay; processes pause menu |
 
 Key design: `App` does NOT know what the level does internally — it calls the `Level` interface methods.
 
@@ -204,7 +214,7 @@ Pause Submenu (opened by ESC during gameplay)
 | `update_menus(events)` | Snapshot enabled states before processing to prevent event bleed-through |
 | `draw_menus(surface)` | Draw all enabled menus |
 
-Event bleed-through is prevented by caching each menu's enabled state **before** processing any events. This ensures a menu enabled during another menu's event callback does not receive the same frame's remaining events.
+Event bleed-through is prevented by caching each menu's enabled state **before** processing any events.
 
 ---
 
@@ -309,36 +319,77 @@ Cost text is drawn **white** if `self.money ≥ cost`, **red** otherwise.
 
 | Method | Purpose |
 |--------|---------|
-| `__init__(surface, save_name)` | Create Grid, BuildingMenu (top, full-width), load from save file |
-| `_is_supported(gx, gy, w, h)` | `True` if gy == 0 (ground) or any cell below is occupied |
+| `__init__(surface, save_name)` | Create Grid, BuildingMenu, load from save file, init drop animation state |
+| `_is_supported(gx, gy, w, h)` | `True` if gy == 0 or any cell below is occupied |
 | `_can_place(gx, gy, w, h)` | Checks money, bounds, overlap, and support |
-| `handle_event(event)` | Widget clicks → BuildingMenu; grid click → place selected building if valid |
-| `update(dt)` | Sync money to widget, track hover cell |
-| `draw()` | Fill → draw buildings → grid → hover preview → BuildingMenu → money HUD |
-| `_draw_buildings()` | Iterate `self.buildings`, render each cell by building colour |
-| `_draw_hover()` | Green/red highlight at building footprint; shows `(gx,gy) OK/NO` in debug |
-| `_draw_money()` | `$ N` gold text at top-right |
-| `save()` | Write JSON to `saves/{save_name}.json` (money + building list) |
-| `load()` | Read JSON, restore buildings and `_occupied_cells` set |
+| `handle_event(event)` | Widget clicks → BuildingMenu; grid click → `_start_drop` for placement animation |
+| `update(dt)` | Updates snow, stars, **falling buildings**, particles, hover |
+| `draw()` | Fill → stars → buildings → **falling buildings** → **drop particles** → snow → grid → hover → widgets → buttons → money |
+| `_start_drop(gx, gy, bt)` | Reserves cells, deducts money, creates drop animation state (duration from `config.DROP_ANIMATION_MS`) |
+| `_complete_drop(fb)` | Adds building to `self.buildings`, saves |
+| `_compute_drop_offset(progress)` | Exponential ease-out curve for smooth landing |
+| `_draw_thrust_flame(fb, offset_y)` | Two-tone flickering rocket flame below descending building |
+| `_emit_drop_particles(fb, offset_y)` | Orange/yellow particles shooting downward during descent |
+| `_draw_drop_particles()` | Renders particle debris with fade |
+| `save()` / `load()` | JSON save/load for buildings + money |
+
+**Building drop animation**: On placement, buildings descend from above the screen with an exponential ease-out curve and a flickering rocket thrust flame. Cells are reserved immediately to prevent overlap. Coins deducted on drop start.
 
 Rendering order:
-1. Background fill `(20, 25, 40)`
-2. Placed buildings (coloured cells)
-3. Grid lines + boundary (debug)
-4. Hover preview (green/red overlay)
-5. BuildingMenu widget (top bar)
-6. Money text (top-right)
+1. Background fill `(0, 0, 0)`
+2. Twinkling star overlay
+3. Placed buildings
+4. **Falling buildings** (with thrust flame)
+5. **Drop particles**
+6. Snow overlay
+7. Grid lines (debug)
+8. Hover preview
+9. BuildingMenu widget (top bar)
+10. Mode toggle button
+11. "Mine Asteroids" button
+12. Money text
 
-#### Placement rules
+#### `level_dark.py` — Dark Side (Asteroids clone)
 
-- **Support**: Building must be on ground (`gy == 0`) or at least one cell of its bottom row must rest on an occupied cell.
-- **Overlap**: Cannot place over existing buildings or out of bounds.
-- **Cost**: Deducted from `self.money` on placement. Checked beforehand in `_can_place`.
-- **Save**: Auto-saves to `saves/{save_name}.json` after every placement. Loaded on level init.
+Full Asteroids arcade clone drawn entirely with `pygame.draw.*` shapes.
 
-#### `level_dark.py` — Dark Side stub
+| Method | Purpose |
+|--------|---------|
+| `__init__(surface, minigame=False)` | Init game state, countdown, shader layers |
+| `handle_event(event)` | Ship controls (arrows + thrust + shoot), minigame exit (ESC / game-over) |
+| `update(dt)` | Physics: ship, bullets, asteroids, particles, collisions, wave progression |
+| `draw()` | Render to frame buffer: stars → asteroids → bullets → ship → glow → particles → HUD, then blit to screen with shake offset |
+| `is_minigame_done()` | Returns `True` when player wants to exit back to light level |
+| `get_earnings()` | Returns score (coins earned during mining run) |
 
-Minimal fill with `(10, 10, 20)` background. Ready for Asteroids-style implementation.
+**Game objects** (all drawn with `pygame.draw.*`):
+- **Ship**: Triangle polygon with rotation, thrust momentum, blink invincibility
+- **Asteroids**: Irregular polygons with 3 sizes (large→medium→small), split on destruction
+- **Bullets**: Circles with additive glow
+- **Particles**: Explosion debris and thrust exhaust (fading circles)
+
+**ShaderSurface class**:
+Wraps `pygame.Surface(SRCALPHA)` for blend-mode compositing. Used for:
+- Ship glow (BLEND_ADD)
+- Bullet glow (BLEND_ADD)
+- Particle layer (BLEND_ADD)
+- Thrust glow (BLEND_ADD)
+
+Can be swapped for OpenGL framebuffers for real GLSL shader support.
+
+**Effects**:
+- Screen shake on collisions (random offset of frame buffer)
+- Additive glow layers
+- Particle explosions with velocity damping
+- Thrust flame + exhaust particles
+- Wave announcement text
+
+**Game rules**:
+- Start with 3 lives, asteroids per wave = `min(3 + wave, 18)`
+- Collisions destroy ship (invincibility blink after respawn)
+- Game over → press Enter/Space to return to light level with coins
+- ESC during play exits back to light level
+- Coins = score (large=20, medium=50, small=100)
 
 ---
 
@@ -359,7 +410,7 @@ Save files are JSON in `saves/` directory:
 - **New Game**: User enters a name → creates `saves/<name>.json` with 1000 money and empty buildings.
 - **Load Game**: Lists all `.json` files in `saves/`; selecting one restores money and all placed buildings.
 - **Auto-save**: Every building placement triggers `save()`.
-- **File isolation**: Each save slot is a separate `.json` file. Switching saves preserves independent game states.
+- **File isolation**: Each save slot is a separate `.json` file.
 
 ---
 
@@ -370,8 +421,21 @@ Pressing **ESC** during gameplay transitions to the `PAUSED` state:
 2. A semi-transparent black `Surface` (alpha 128) is blitted over it.
 3. The **Pause menu** overlays on top: Continue / Options / Quit.
 4. **ESC again** or **Continue** resumes gameplay.
-5. **Options** opens the Sound submenu (volume sliders); Back returns to Pause.
+5. **Options** opens the Sound submenu.
 6. **Quit** stops BGM, frees the level, returns to Main Menu.
+
+---
+
+### Minigame system (Dark Side mining)
+
+From the Light Side level, clicking the **"Mine Asteroids"** button (top-right HUD) triggers the dark side mining minigame:
+
+1. The App saves the current light level instance
+2. Creates `LevelDark(self.surface, minigame=True)`
+3. 3-2-1 countdown, then play Asteroids
+4. ESC or game-over → exits back to light level
+5. All score/coins earned during mining are added to the light level's money
+6. Light level BGM continues playing throughout
 
 ---
 
@@ -394,7 +458,7 @@ All debug output uses `[TAG]` prefix:
 [APP] MENU → TRANSITION (LOAD)
 [SPINNER] start "Loading game..."
 [SPINNER] stop
-[APP] TRANSITION → PLAYING (Light Side)
+[APP] TRANSITION → PLAYING
 [AUDIO] mixer initialized
 [AUDIO] registered BGM: 11 -> music/11.mp3
 [AUDIO] playing BGM: 11

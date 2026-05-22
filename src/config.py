@@ -54,11 +54,19 @@ debug_layout = True
 debug_menu = True
 debug_audio = True
 
+DROP_ANIMATION_MS = 500
+
+ENABLE_GLSL = False
+
+DARK_COUNTDOWN_SECONDS = 3
+DARK_MINING_SECONDS = 60
+
 cheat_coins = True
 show_grid = False
 
 _fps = 0
 _save_name = "default"
+_mine_requested = False
 
 
 def set_fps(v):
@@ -77,6 +85,20 @@ def set_save_name(name):
 
 def get_save_name():
     return _save_name
+
+
+def set_mine_requested(v):
+    global _mine_requested
+    _mine_requested = v
+
+
+def get_mine_requested():
+    return _mine_requested
+
+
+def clear_mine_requested():
+    global _mine_requested
+    _mine_requested = False
 
 
 def get_screen_center():

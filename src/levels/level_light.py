@@ -7,6 +7,7 @@ from src import config
 from src.levels.level_base import Level
 from src.grid import Grid
 from src.widget.building_menu import BuildingMenu
+from src.shaders import ShaderSurface
 
 
 class LevelLight(Level):
@@ -32,6 +33,7 @@ class LevelLight(Level):
         self._hover_font = pygame.font.Font(None, 18)
         self._money_font = pygame.font.Font(None, 36)
         self._mode_font = pygame.font.Font(None, 22)
+        self._mine_font = pygame.font.Font(None, 20)
         self._valid_highlight = pygame.Surface(
             (self.grid.cell_size, self.grid.cell_size), pygame.SRCALPHA
         )
@@ -46,6 +48,7 @@ class LevelLight(Level):
         self._demolish_highlight.fill((255, 100, 100, 80))
 
         self._mode_rect = pygame.Rect(10, 74, 130, 28)
+        self._mine_rect = pygame.Rect(config.SCREEN_WIDTH - 180, 74, 170, 28)
 
         self._snow_overlay = pygame.Surface(
             (config.SCREEN_WIDTH, config.SCREEN_HEIGHT), pygame.SRCALPHA
@@ -54,12 +57,16 @@ class LevelLight(Level):
         self._snow_particles = []
         self._init_snow(120)
 
-        self._star_overlay = pygame.Surface(
-            (config.SCREEN_WIDTH, config.SCREEN_HEIGHT), pygame.SRCALPHA
+        self._star_overlay = ShaderSurface(
+            config.SCREEN_WIDTH, config.SCREEN_HEIGHT,
         )
         self._stars = []
         self._star_time = 0
         self._init_stars(200)
+
+        self._falling_buildings = []
+        self._drop_particles = []
+        self._demolish_particles = []
 
         self.load()
 
@@ -125,7 +132,7 @@ class LevelLight(Level):
                 s["x"] -= config.SCREEN_WIDTH
 
     def _draw_stars(self):
-        self._star_overlay.fill((0, 0, 0, 0))
+        self._star_overlay.clear()
         for s in self._stars:
             blink = math.sin(self._star_time * s["blink_speed"] + s["phase"])
             alpha = int(s["base_alpha"] + 55 * blink)
@@ -133,10 +140,10 @@ class LevelLight(Level):
             color = (255, 255, 255, alpha)
             r = max(1, int(s["size"]))
             pygame.draw.circle(
-                self._star_overlay, color,
+                self._star_overlay.surface, color,
                 (int(s["x"]), int(s["y"])), r,
             )
-        self.surface.blit(self._star_overlay, (0, 0))
+        self._star_overlay.blit_to(self.surface, blend=pygame.BLEND_ADD)
 
     # ── support check ─────────────────────────────────────────────────
 
@@ -206,6 +213,11 @@ class LevelLight(Level):
                 if config.debug:
                     print(f"[MODE] {self.mode}")
                 return
+            if self._mine_rect.collidepoint(event.pos):
+                config.set_mine_requested(True)
+                if config.debug:
+                    print("[MINE] requested dark side mining")
+                return
             for widget in self.widgets:
                 if widget.handle_event(event):
                     return
@@ -220,7 +232,7 @@ class LevelLight(Level):
                 bt = self.building_menu.get_selected_building()
                 if not self._can_place(gx, gy, bt["w"], bt["h"]):
                     return
-                self._place_building(gx, gy, bt)
+                self._start_drop(gx, gy, bt)
 
     def _is_over_widget(self, pos):
         for w in self.widgets:
@@ -248,6 +260,37 @@ class LevelLight(Level):
             print(f"[BUILD] placed {bt['name']} at ({gx},{gy}) money={self.money}")
         self.save()
 
+    def _start_drop(self, gx, gy, bt):
+        cells = [(gx + dx, gy + dy) for dy in range(bt["h"]) for dx in range(bt["w"])]
+        self._occupied_cells.update(cells)
+        self.money -= bt["cost"]
+        self._falling_buildings.append({
+            "bt": dict(bt),
+            "gx": gx,
+            "gy": gy,
+            "cells": cells,
+            "progress": 0.0,
+            "duration": config.DROP_ANIMATION_MS,
+        })
+        if config.debug:
+            print(f"[DROP] started {bt['name']} at ({gx},{gy})")
+
+    def _complete_drop(self, fb):
+        bt = fb["bt"]
+        self.buildings.append({
+            "type": bt["name"],
+            "gx": fb["gx"],
+            "gy": fb["gy"],
+            "width": bt["w"],
+            "height": bt["h"],
+            "color": bt["color"],
+            "cost": bt["cost"],
+        })
+        self._falling_buildings.remove(fb)
+        if config.debug:
+            print(f"[BUILD] landed {bt['name']} at ({fb['gx']},{fb['gy']}) money={self.money}")
+        self.save()
+
     def _demolish(self, gx, gy):
         building = self._get_building_at(gx, gy)
         if not building:
@@ -264,17 +307,161 @@ class LevelLight(Level):
         self.buildings.remove(building)
         if config.debug:
             print(f"[DEMOLISH] removed {building['type']} at ({building['gx']},{building['gy']}) refund={refund} money={self.money}")
+        self._emit_demolish_explosion(building)
         self.save()
+
+    # ── demolish explosion ─────────────────────────────────────────────
+
+    def _emit_demolish_explosion(self, building):
+        cs = self.grid.cell_size
+        cx = (building["gx"] + building["width"] / 2) * cs
+        cy = config.SCREEN_HEIGHT - (building["gy"] + building["height"] / 2) * cs
+        color = building["color"]
+        count = max(8, building["width"] * building["height"] * 4)
+        for _ in range(count):
+            a = random.uniform(0, 2 * math.pi)
+            spd = random.uniform(80, 280)
+            self._demolish_particles.append({
+                "x": cx + random.uniform(-12, 12),
+                "y": cy + random.uniform(-12, 12),
+                "vx": math.cos(a) * spd,
+                "vy": math.sin(a) * spd - random.uniform(20, 80),
+                "life": random.uniform(250, 600),
+                "max_life": 600,
+                "color": random.choice([color, (255, 200, 100), (200, 200, 200)]),
+                "size": random.uniform(2, 5),
+            })
+
+    # ── drop animation ────────────────────────────────────────────────
+
+    def _compute_drop_offset(self, progress):
+        t = (1 - math.exp(-4 * progress)) / (1 - math.exp(-4))
+        return int(-config.SCREEN_HEIGHT * (1 - t))
+
+    def _emit_drop_particles(self, fb, offset_y):
+        bt = fb["bt"]
+        cs = self.grid.cell_size
+        gx, gy = fb["gx"], fb["gy"]
+        w, h = bt["w"], bt["h"]
+        bottom_py = config.SCREEN_HEIGHT - gy * cs + offset_y
+        left_px = gx * cs
+        right_px = (gx + w) * cs
+        for _ in range(3):
+            self._drop_particles.append({
+                "x": random.uniform(left_px, right_px),
+                "y": bottom_py,
+                "vx": random.uniform(-60, 60),
+                "vy": random.uniform(150, 350),
+                "life": random.uniform(200, 450),
+                "max_life": 450,
+                "color": (255, random.randint(140, 220), random.randint(20, 100)),
+                "size": random.uniform(2, 5),
+            })
+
+    def _update_falling_buildings(self, dt):
+        for fb in self._falling_buildings[:]:
+            fb["progress"] += dt / fb["duration"]
+            if fb["progress"] >= 1.0:
+                self._complete_drop(fb)
+                continue
+            offset_y = self._compute_drop_offset(fb["progress"])
+            fb["_offset_y"] = offset_y
+            self._emit_drop_particles(fb, offset_y)
+        for p in self._drop_particles[:]:
+            dt_sec = dt / 1000.0
+            p["x"] += p["vx"] * dt_sec
+            p["y"] += p["vy"] * dt_sec
+            p["vy"] += 400 * dt_sec
+            p["life"] -= dt
+            if p["life"] <= 0:
+                self._drop_particles.remove(p)
+
+    def _draw_falling_buildings(self):
+        cs = self.grid.cell_size
+        for fb in self._falling_buildings:
+            offset_y = fb.get("_offset_y", -config.SCREEN_HEIGHT)
+            bt = fb["bt"]
+            gx, gy = fb["gx"], fb["gy"]
+            w, h = bt["w"], bt["h"]
+            for dy in range(h):
+                for dx in range(w):
+                    px, py = self.grid.grid_to_pixel(gx + dx, gy + dy)
+                    py += offset_y
+                    rect = pygame.Rect(px, py, cs, cs)
+                    pygame.draw.rect(self.surface, bt["color"], rect)
+            if fb["progress"] < 1.0:
+                self._draw_thrust_flame(fb, offset_y)
+
+    def _draw_thrust_flame(self, fb, offset_y):
+        cs = self.grid.cell_size
+        bt = fb["bt"]
+        gx, gy = fb["gx"], fb["gy"]
+        w, h = bt["w"], bt["h"]
+        bottom_py = config.SCREEN_HEIGHT - gy * cs + offset_y
+        left_px = gx * cs
+        right_px = (gx + w) * cs
+        center_x = (left_px + right_px) // 2
+        flicker = 0.7 + random.random() * 0.6
+        flame_h = int(cs * 1.8 * flicker)
+        mid_bottom = bottom_py + flame_h
+        mid_inner = bottom_py + int(flame_h * 0.55)
+        pygame.draw.polygon(
+            self.surface, (255, 160, 40),
+            [(left_px, bottom_py), (right_px, bottom_py), (center_x, mid_bottom)],
+        )
+        pygame.draw.polygon(
+            self.surface, (255, 230, 140),
+            [(left_px + 5, bottom_py), (right_px - 5, bottom_py), (center_x, mid_inner)],
+        )
+
+    def _update_demolish_particles(self, dt):
+        dt_sec = dt / 1000.0
+        for p in self._demolish_particles[:]:
+            p["x"] += p["vx"] * dt_sec
+            p["y"] += p["vy"] * dt_sec
+            p["vy"] += 600 * dt_sec
+            p["vx"] *= 0.96
+            p["life"] -= dt
+            if p["life"] <= 0:
+                self._demolish_particles.remove(p)
+
+    def _draw_demolish_particles(self):
+        for p in self._demolish_particles:
+            t = p["life"] / p["max_life"]
+            alpha = int(max(0, t * 220))
+            r = max(1, int(p["size"] * (0.3 + 0.7 * t)))
+            color = (min(255, p["color"][0]),
+                     min(255, p["color"][1]),
+                     min(255, p["color"][2]))
+            pygame.draw.circle(
+                self.surface, color + (alpha,),
+                (int(p["x"]), int(p["y"])), r,
+            )
+
+    def _draw_drop_particles(self):
+        for p in self._drop_particles:
+            t = p["life"] / p["max_life"]
+            alpha = int(max(0, t * 200))
+            size = max(1, int(p["size"] * (0.3 + 0.7 * t)))
+            color = (min(255, p["color"][0]),
+                     min(255, p["color"][1]),
+                     min(255, p["color"][2]))
+            pygame.draw.circle(
+                self.surface, color + (alpha,),
+                (int(p["x"]), int(p["y"])), size,
+            )
 
     # ── update ────────────────────────────────────────────────────────
 
     def update(self, dt):
         self._update_snow(dt)
         self._update_stars(dt)
+        self._update_falling_buildings(dt)
+        self._update_demolish_particles(dt)
         self.building_menu.money = self.money
         self.building_menu.visible = self.mode == "CONSTRUCT"
         px, py = pygame.mouse.get_pos()
-        if self._is_over_widget((px, py)) or self._mode_rect.collidepoint((px, py)):
+        if self._is_over_widget((px, py)) or self._mode_rect.collidepoint((px, py)) or self._mine_rect.collidepoint((px, py)):
             self._hover_cell = None
         else:
             gx, gy = self.grid.pixel_to_grid(px, py)
@@ -289,12 +476,16 @@ class LevelLight(Level):
         self.surface.fill((0, 0, 0))
         self._draw_stars()
         self._draw_buildings()
+        self._draw_falling_buildings()
+        self._draw_drop_particles()
+        self._draw_demolish_particles()
         self._draw_snow()
         self.grid.draw(self.surface)
         self._draw_hover()
         for widget in self.widgets:
             widget.draw(self.surface)
         self._draw_mode_toggle()
+        self._draw_mine_button()
         self._draw_money()
 
     def _draw_buildings(self):
@@ -352,6 +543,15 @@ class LevelLight(Level):
         tx = self._mode_rect.x + (self._mode_rect.w - text.get_width()) // 2
         ty = self._mode_rect.y + (self._mode_rect.h - text.get_height()) // 2
         self.surface.blit(text, (tx, ty))
+
+    def _draw_mine_button(self):
+        bg = (70, 80, 140)
+        pygame.draw.rect(self.surface, bg, self._mine_rect)
+        pygame.draw.rect(self.surface, (150, 160, 200), self._mine_rect, 1)
+        label = self._mine_font.render("Mine Asteroids", True, (220, 225, 255))
+        tx = self._mine_rect.x + (self._mine_rect.w - label.get_width()) // 2
+        ty = self._mine_rect.y + (self._mine_rect.h - label.get_height()) // 2
+        self.surface.blit(label, (tx, ty))
 
     def _draw_money(self):
         text = self._money_font.render(f"$ {self.money}", True, (255, 220, 50))
