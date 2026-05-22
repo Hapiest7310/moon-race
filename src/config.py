@@ -61,6 +61,42 @@ ENABLE_GLSL = False
 DARK_COUNTDOWN_SECONDS = 3
 DARK_MINING_SECONDS = 60
 
+# ── cat ────────────────────────────────────────────────────────────────
+CAT_SPRITES_DIR = "assets/images/cat"
+CAT_SCALE = 1.5
+CAT_START_X = 200
+CAT_RUN_SPEED = 2
+CAT_JUMP_HEIGHT = 40
+CAT_JUMP_FRAMES = 30
+CAT_IDLE_DURATION_RANGE = (2000, 6000)
+CAT_RUN_DURATION_RANGE = (3000, 8000)
+CAT_HISS_DURATION_RANGE = (1000, 3000)
+CAT_ANIM_FPS = {
+    "idle_1": 4, "idle_2": 4,
+    "run_1": 8, "run_2": 8,
+    "jump": 8,
+    "hiss": 8, "lick_1": 4, "lick_2": 4,
+    "punch": 6, "sleep": 4,
+}
+CAT_TRANSITIONS = {
+    "idle":  {"run": 55, "jump": 15, "climb": 10, "idle": 20},
+    "run":   {"idle": 45, "jump": 20, "climb": 5, "run": 30},
+    "jump":  {"idle": 50, "run": 50},
+    "climb": {"idle": 60, "run": 40},
+}
+
+# movement on the grid (pixels per second)
+CAT_GRID_SPEED = 120
+# vertical jump overshoot fraction (extra above target height)
+CAT_JUMP_OVERSHOOT_FACTOR = 0.25
+# time per grid row when climbing vertically (ms)
+CAT_CLIMB_MS_PER_ROW = 120
+# cat debug flags
+debug_cat_plan = True
+debug_cat_state = True
+# allow manual setting of cat target block (debug)
+debug_cat_manual_target = True
+
 cheat_coins = True
 show_grid = False
 

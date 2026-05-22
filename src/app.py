@@ -1,14 +1,14 @@
 import pygame
 from src import config
-from src.sprites import AnimatedSprite
-from src.menu import (
+from src.animations.sprites import AnimatedSprite
+from src.ui.menu import (
     update_menus, draw_menus, get_action, clear_action, enable_main_menu,
     open_pause_menu, get_pause_action, clear_pause_action,
 )
-from src import spinner
+from src.ui import spinner
 from src import audio
-from src.levels.level_light import LevelLight
-from src.levels.level_dark import LevelDark
+from src.levels.light.level_light import LevelLight
+from src.levels.dark.level_dark import LevelDark
 
 
 class App:

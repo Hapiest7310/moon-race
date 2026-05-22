@@ -1,6 +1,6 @@
 import pygame
 from src import config
-from src.sprites import AnimatedSprite
+from src.animations.sprites import AnimatedSprite
 
 _active = False
 _moon = None

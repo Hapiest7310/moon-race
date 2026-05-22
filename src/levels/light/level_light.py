@@ -5,9 +5,10 @@ import random
 import pygame
 from src import config
 from src.levels.level_base import Level
-from src.grid import Grid
-from src.widget.building_menu import BuildingMenu
+from src.levels.light.grid import Grid
+from src.ui.widget.building_menu import BuildingMenu
 from src.shaders import ShaderSurface
+from src.levels.light.cat import Cat
 
 
 class LevelLight(Level):
@@ -68,6 +69,10 @@ class LevelLight(Level):
         self._drop_particles = []
         self._demolish_particles = []
 
+        # pass grid and a getter for buildings so the cat can query terrain
+        self.cat = Cat(self.grid, lambda: self.buildings)
+        # manual cat target pick mode (debug)
+        self._cat_manual_pick_active = False
         self.load()
 
     # ── snow overlay ──────────────────────────────────────────────────
@@ -207,7 +212,40 @@ class LevelLight(Level):
                     print(f"[CHEAT] coins: {self.money}")
             return
 
+        # trigger climb with key '1'
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_1:
+            try:
+                self.cat.start_climb()
+                if config.debug:
+                    print("[CAT] climb triggered by key 1")
+            except Exception:
+                pass
+            return
+
+        # debug manual target mode toggle (key '2')
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_2 and config.debug_cat_manual_target:
+            self._cat_manual_pick_active = not self._cat_manual_pick_active
+            if config.debug:
+                print(f"[CAT] manual pick mode = {self._cat_manual_pick_active}")
+            return
+
         if event.type == pygame.MOUSEBUTTONDOWN:
+            # if manual pick active, use click to set cat target on top of building
+            if self._cat_manual_pick_active:
+                gx, gy = self.grid.pixel_to_grid(*event.pos)
+                b = self._get_building_at(gx, gy)
+                if b:
+                    # choose top cell column at clicked gx
+                    target_gx = gx
+                    target_gy = b["gy"] + b["height"] - 1
+                    try:
+                        self.cat.start_climb_to(target_gx, target_gy)
+                        if config.debug:
+                            print(f"[CAT] manual climb to ({target_gx},{target_gy})")
+                    except Exception:
+                        pass
+                self._cat_manual_pick_active = False
+                return
             if self._mode_rect.collidepoint(event.pos):
                 self.mode = "DEMOLISH" if self.mode == "CONSTRUCT" else "CONSTRUCT"
                 if config.debug:
@@ -458,6 +496,7 @@ class LevelLight(Level):
         self._update_stars(dt)
         self._update_falling_buildings(dt)
         self._update_demolish_particles(dt)
+        self.cat.update(dt)
         self.building_menu.money = self.money
         self.building_menu.visible = self.mode == "CONSTRUCT"
         px, py = pygame.mouse.get_pos()
@@ -476,6 +515,7 @@ class LevelLight(Level):
         self.surface.fill((0, 0, 0))
         self._draw_stars()
         self._draw_buildings()
+        self.cat.draw(self.surface)
         self._draw_falling_buildings()
         self._draw_drop_particles()
         self._draw_demolish_particles()
@@ -487,6 +527,52 @@ class LevelLight(Level):
         self._draw_mode_toggle()
         self._draw_mine_button()
         self._draw_money()
+        # debug: cat plan and state
+        try:
+            if config.debug_cat_plan:
+                plan = self.cat.get_debug_plan()
+                if plan:
+                    cs = self.grid.cell_size
+                    tgx = plan.get("target_gx")
+                    tgy = plan.get("target_gy")
+                    # highlight target cell
+                    px, py = self.grid.grid_to_pixel(tgx, tgy)
+                    rect = pygame.Rect(px, py, cs, cs)
+                    overlay = pygame.Surface((cs, cs), pygame.SRCALPHA)
+                    overlay.fill((255, 200, 0, 120))
+                    self.surface.blit(overlay, (px, py))
+                    pygame.draw.rect(self.surface, (255, 200, 0), rect, 2)
+                    # highlight horizontal path from cat to target gx
+                    sprite_w = self.cat.animations[self.cat.current_anim][0].get_width()
+                    feet_x = int(self.cat.x + sprite_w // 2)
+                    cur_gx, cur_gy = self.grid.pixel_to_grid(feet_x, self.cat.y + self.cat.animations[self.cat.current_anim][0].get_height())
+                    x0 = min(cur_gx, tgx)
+                    x1 = max(cur_gx, tgx)
+                    for gx in range(x0, x1 + 1):
+                        px, py = self.grid.grid_to_pixel(gx, cur_gy)
+                        overlay = pygame.Surface((cs, cs), pygame.SRCALPHA)
+                        overlay.fill((100, 255, 150, 80))
+                        self.surface.blit(overlay, (px, py))
+                        pygame.draw.rect(self.surface, (80, 200, 120), (px, py, cs, cs), 1)
+        except Exception:
+            pass
+
+        if config.debug_cat_state:
+            try:
+                state = self.cat.get_state()
+                txt = f"CAT {state['behavior']} ({state['anim']})"
+                font = pygame.font.Font(None, 20)
+                label = font.render(txt, True, (255, 255, 255))
+                self.surface.blit(label, (10, 40))
+            except Exception:
+                pass
+        if self._cat_manual_pick_active:
+            try:
+                font = pygame.font.Font(None, 18)
+                label = font.render("CAT MANUAL PICK: click a building cell", True, (255, 180, 80))
+                self.surface.blit(label, (10, 60))
+            except Exception:
+                pass
 
     def _draw_buildings(self):
         for b in self.buildings:
