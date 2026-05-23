@@ -1,13 +1,14 @@
 import pygame
 from src import config
-from src.sprites import AnimatedSprite
-from src.menu import (
+from src.animations.sprites import AnimatedSprite
+from src.ui.menu import (
     update_menus, draw_menus, get_action, clear_action, enable_main_menu,
     open_pause_menu, get_pause_action, clear_pause_action,
 )
-from src import spinner
+from src.ui import spinner
 from src import audio
-from src.levels.level_light import LevelLight
+from src.levels.light.level_light import LevelLight
+from src.levels.dark.level_dark import LevelDark
 
 
 class App:
@@ -22,6 +23,8 @@ class App:
 
         self._trans_timer = 0
         self.level = None
+        self._minigame = False
+        self._saved_level = None
 
         spinner.init()
 
@@ -81,12 +84,15 @@ class App:
         if self._trans_timer <= 0:
             spinner.stop()
             if config.debug and config.debug_app:
-                print("[APP] TRANSITION → PLAYING (Light Side)")
+                print("[APP] TRANSITION → PLAYING")
             self.level = LevelLight(self.surface, config.get_save_name())
             audio.play_music("11")
             self.state = "PLAYING"
 
     def _update_playing(self, dt, events):
+        if self._minigame:
+            self._update_minigame(dt, events)
+            return
         for event in events:
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 if config.debug and config.debug_app:
@@ -98,6 +104,37 @@ class App:
 
         self.level.update(dt)
         self.level.draw()
+
+        if config.get_mine_requested():
+            config.clear_mine_requested()
+            self._enter_minigame()
+
+    def _enter_minigame(self):
+        if config.debug and config.debug_app:
+            print("[APP] entering dark side minigame")
+        self._saved_level = self.level
+        self._minigame = True
+        self.level = LevelDark(self.surface, minigame=True)
+
+    def _exit_minigame(self):
+        earnings = self.level.score
+        if config.debug and config.debug_app:
+            print(f"[APP] exiting dark side minigame, earnings={earnings}")
+        if isinstance(self._saved_level, LevelLight):
+            self._saved_level.money += earnings
+            if config.debug:
+                print(f"[APP] added {earnings} coins to light level, total={self._saved_level.money}")
+        self.level = self._saved_level
+        self._saved_level = None
+        self._minigame = False
+
+    def _update_minigame(self, dt, events):
+        for event in events:
+            self.level.handle_event(event)
+        self.level.update(dt)
+        self.level.draw()
+        if self.level.is_minigame_done():
+            self._exit_minigame()
 
     def _update_paused(self, dt, events):
         for event in events:

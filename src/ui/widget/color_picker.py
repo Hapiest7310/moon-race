@@ -1,5 +1,5 @@
 import pygame
-from src.widget import Widget
+from src.ui.widget import Widget
 
 
 class ColorPicker(Widget):

@@ -1,5 +1,5 @@
 import pygame
-from src.menu import create_menus, get_main_menu
+from src.ui.menu import create_menus, get_main_menu
 from src import config
 from src.app import App
 from src import audio

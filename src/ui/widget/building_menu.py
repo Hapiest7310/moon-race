@@ -1,9 +1,12 @@
 import pygame
 from src import config
-from src.widget import Widget
+from src.ui.widget import Widget
 
 
 class BuildingMenu(Widget):
+    BTN_W = 56
+    BTN_H = 48
+
     def __init__(self, rect):
         super().__init__(rect)
         self.selected_index = 0
@@ -15,12 +18,8 @@ class BuildingMenu(Widget):
 
     def _build_buttons(self):
         self._button_rects = []
-        for bt in config.BUILDING_TYPES:
-            bw = bt["w"] * 10 + 16
-            bh = bt["h"] * 8 + 10
-            bw = max(bw, 28)
-            bh = max(bh, 24)
-            self._button_rects.append(pygame.Rect(0, 0, bw, bh))
+        for _ in config.BUILDING_TYPES:
+            self._button_rects.append(pygame.Rect(0, 0, self.BTN_W, self.BTN_H))
 
     def get_selected_building(self):
         return config.BUILDING_TYPES[self.selected_index]
@@ -62,15 +61,22 @@ class BuildingMenu(Widget):
                 self.rect.y + local_rect.y,
                 local_rect.w, local_rect.h,
             )
-            pygame.draw.rect(surface, bt["color"], r)
+
+            pygame.draw.rect(surface, (40, 40, 40), r)
             if i == self.selected_index:
                 pygame.draw.rect(surface, (255, 255, 255), r, 3)
             else:
                 pygame.draw.rect(surface, (80, 80, 80), r, 1)
 
-            label = self._name_font.render(f"{bt['w']}x{bt['h']}", True, (255, 255, 255))
+            pw = max(bt["w"] * 8, 16)
+            ph = max(bt["h"] * 6, 16)
+            preview_rect = pygame.Rect(0, 0, pw, ph)
+            preview_rect.center = r.center
+            pygame.draw.rect(surface, bt["color"], preview_rect)
+
+            label = self._name_font.render(f"{bt['w']}x{bt['h']}", True, (180, 180, 180))
             lx = r.x + (r.w - label.get_width()) // 2
-            ly = r.y + (r.h - label.get_height()) // 2
+            ly = r.y + r.h - label.get_height() - 2
             surface.blit(label, (lx, ly))
 
             cost_color = (255, 255, 255) if self.money >= bt["cost"] else (200, 50, 50)
