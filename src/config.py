@@ -1,5 +1,5 @@
-SCREEN_WIDTH = 1920
-SCREEN_HEIGHT = 1080
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 600
 SCREEN_TITLE = "Moon Race"
 
 COLOR_BACKGROUND = (0, 0, 0)
@@ -25,13 +25,13 @@ SAVE_DIR = "saves"
 SAVE_FILE = "light_side_save.json"
 
 BUILDING_TYPES = [
-    {"name": "Foundation",  "w": 1, "h": 1, "cost": 10,  "color": (139, 90,  43),  "sprite_rect": (275,710,325,750)},
-    {"name": "Wall",        "w": 2, "h": 1, "cost": 50,  "color": (100, 100, 100), "sprite_rect": (600,631,700,680)},
-    {"name": "Tower",       "w": 1, "h": 2, "cost": 50,  "color": (70,  70,  90),  "sprite_rect": (190,695,235,750)},
-    {"name": "House",       "w": 2, "h": 2, "cost": 100, "color": (160, 82,  45),  "sprite_rect": (695,255,765,330)},
-    {"name": "Workshop",    "w": 2, "h": 3, "cost": 200, "color": (180, 120, 60),  "sprite_rect": (270,765,335,830)},
+    {"name": "Foundation",  "w": 1, "h": 1, "cost": 10, "color": (139, 90,  43), "sprite_rect": (275,710,325,750)},
+    {"name": "Wall",        "w": 2, "h": 1, "cost": 50, "color": (100, 100, 100), "sprite_rect": (600,631,700,680)},
+    {"name": "Tower",       "w": 1, "h": 2, "cost": 50, "color": (70,  70,  90), "sprite_rect": (190,695,235,750)},
+    {"name": "House",       "w": 2, "h": 2, "cost": 100, "color": (160, 82,  45), "sprite_rect": (695,255,765,330)},
+    {"name": "Workshop",    "w": 2, "h": 3, "cost": 200, "color": (180, 120, 60), "sprite_rect": (270,765,335,830)},
     {"name": "Mansion",     "w": 3, "h": 3, "cost": 300, "color": (100, 149, 237), "sprite_rect": (640,700,750,760)},
-    {"name": "Palace",      "w": 4, "h": 4, "cost": 500, "color": (218, 165, 32),  "sprite_rect": (360,705,495,830)},
+    {"name": "Palace",      "w": 4, "h": 4, "cost": 500, "color": (218, 165, 32), "sprite_rect": (360,705,495,830)},
     {"name": "Observatory", "w": 2, "h": 4, "cost": 400, "color": (147, 112, 219), "sprite_rect": (430,433,490,553)},
     {"name": "green_house", "w": 4, "h": 2, "cost": 450, "color": (34, 139, 34), "sprite_rect": (355,945,505,1000)}
 ]

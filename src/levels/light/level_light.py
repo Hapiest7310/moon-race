@@ -10,11 +10,12 @@ from src.ui.widget.building_menu import BuildingMenu
 from src.shaders import ShaderSurface
 from src.levels.light.cat import Cat
 import src.animations.building_sprites as building_sprites
-building_sprites.load("assets/images/Buildings.png")
+
 
 class LevelLight(Level):
     def __init__(self, surface, save_name="default"):
         super().__init__(surface)
+        building_sprites.load("assets/images/Buildings.png")
         self._save_name = save_name
         self.grid = Grid()
         self.money = config.STARTING_MONEY
@@ -573,6 +574,7 @@ class LevelLight(Level):
     def _draw_building(self, surface, bt, px, py, alpha=255):
         """Draw a building — sprite if available, colored rect as fallback."""
         sprite = building_sprites.get(bt["name"])
+        print(f"[DRAW] {bt['name']} sprite={sprite is not None}")
         w_px = bt["w"] * config.GRID_CELL_SIZE
         h_px = bt["h"] * config.GRID_CELL_SIZE
         if sprite:
