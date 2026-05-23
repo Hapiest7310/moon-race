@@ -9,7 +9,8 @@ from src.levels.light.grid import Grid
 from src.ui.widget.building_menu import BuildingMenu
 from src.shaders import ShaderSurface
 from src.levels.light.cat import Cat
-
+import src.animations.building_sprites as building_sprites
+building_sprites.load("assets/images/Buildings.png")
 
 class LevelLight(Level):
     def __init__(self, surface, save_name="default"):
@@ -415,18 +416,13 @@ class LevelLight(Level):
                 self._drop_particles.remove(p)
 
     def _draw_falling_buildings(self):
-        cs = self.grid.cell_size
         for fb in self._falling_buildings:
             offset_y = fb.get("_offset_y", -config.SCREEN_HEIGHT)
             bt = fb["bt"]
             gx, gy = fb["gx"], fb["gy"]
-            w, h = bt["w"], bt["h"]
-            for dy in range(h):
-                for dx in range(w):
-                    px, py = self.grid.grid_to_pixel(gx + dx, gy + dy)
-                    py += offset_y
-                    rect = pygame.Rect(px, py, cs, cs)
-                    pygame.draw.rect(self.surface, bt["color"], rect)
+            px, py = self.grid.grid_to_pixel(gx, gy)
+            py = py - (bt["h"] - 1) * config.GRID_CELL_SIZE + offset_y
+            self._draw_building(self.surface, bt, px, py)
             if fb["progress"] < 1.0:
                 self._draw_thrust_flame(fb, offset_y)
 
@@ -574,13 +570,32 @@ class LevelLight(Level):
             except Exception:
                 pass
 
+    def _draw_building(self, surface, bt, px, py, alpha=255):
+        """Draw a building — sprite if available, colored rect as fallback."""
+        sprite = building_sprites.get(bt["name"])
+        w_px = bt["w"] * config.GRID_CELL_SIZE
+        h_px = bt["h"] * config.GRID_CELL_SIZE
+        if sprite:
+            img = sprite
+            if alpha < 255:
+                img = sprite.copy()
+                img.set_alpha(alpha)
+            surface.blit(img, (px, py))
+        else:
+            # Fallback: colored rectangle
+            color = bt["color"]
+            rect = pygame.Rect(px, py, w_px, h_px)
+            pygame.draw.rect(surface, color, rect)
+            pygame.draw.rect(surface, (255, 255, 255), rect, 1)
+
     def _draw_buildings(self):
         for b in self.buildings:
-            for dy in range(b["height"]):
-                for dx in range(b["width"]):
-                    px, py = self.grid.grid_to_pixel(b["gx"] + dx, b["gy"] + dy)
-                    rect = pygame.Rect(px, py, self.grid.cell_size, self.grid.cell_size)
-                    pygame.draw.rect(self.surface, b["color"], rect)
+            bt = next(t for t in config.BUILDING_TYPES if t["name"] == b["type"])
+            # Get pixel position of the building's bottom-left cell
+            px, py = self.grid.grid_to_pixel(b["gx"], b["gy"])
+            # Shift py up so the sprite covers the full height
+            py = py - (bt["h"] - 1) * config.GRID_CELL_SIZE
+            self._draw_building(self.surface, bt, px, py)
 
     def _draw_hover(self):
         if not self._hover_cell:
