@@ -1,7 +1,6 @@
 import pygame
 from src import config
 
-
 class AnimatedSprite(pygame.sprite.Sprite):
     def __init__(self, x=None, y=None, sprite_sheet_path=None, frame_width=None, frame_height=None, frame_count=None, animation_speed=None, scale=None):
         super().__init__()
@@ -48,3 +47,4 @@ class AnimatedSprite(pygame.sprite.Sprite):
             self.animation_time = 0
             self.current_frame = (self.current_frame + 1) % len(self.frames)
             self.image = self.frames[self.current_frame]
+

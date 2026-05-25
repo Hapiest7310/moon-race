@@ -1,6 +1,7 @@
 import pygame
 from src import config
 from src.ui.widget import Widget
+import src.animations.building_sprites as building_sprites
 
 
 class BuildingMenu(Widget):
@@ -72,7 +73,25 @@ class BuildingMenu(Widget):
             ph = max(bt["h"] * 6, 16)
             preview_rect = pygame.Rect(0, 0, pw, ph)
             preview_rect.center = r.center
-            pygame.draw.rect(surface, bt["color"], preview_rect)
+            sprite = building_sprites.get(bt["name"])
+            if sprite:
+                # scale sprite to fit inside the button
+                max_w = self.BTN_W - 8
+                max_h = self.BTN_H - 16  # leave room for cost text below and size label
+                scale = min(max_w / sprite.get_width(), max_h / sprite.get_height())
+                scaled_w = max(1, int(sprite.get_width() * scale))
+                scaled_h = max(1, int(sprite.get_height() * scale))
+                preview = pygame.transform.smoothscale(sprite, (scaled_w, scaled_h))
+                px = r.x + (r.w - scaled_w) // 2
+                py = r.y + (r.h - scaled_h) // 2 - 4
+                surface.blit(preview, (px, py))
+            else:
+                # fallback colored rect
+                pw = max(bt["w"] * 8, 16)
+                ph = max(bt["h"] * 6, 16)
+                preview_rect = pygame.Rect(0, 0, pw, ph)
+                preview_rect.center = r.center
+                pygame.draw.rect(surface, bt["color"], preview_rect)
 
             label = self._name_font.render(f"{bt['w']}x{bt['h']}", True, (180, 180, 180))
             lx = r.x + (r.w - label.get_width()) // 2
