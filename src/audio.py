@@ -74,6 +74,28 @@ def play_music(name, loops=-1):
             print(f"[AUDIO] failed to play {name}: {e}")
 
 
+def play_music_file(path, loops=-1):
+    global _current_music
+    if not _inited or not config.AUDIO_ENABLED:
+        return
+    if not os.path.isfile(path):
+        if config.debug and config.debug_audio:
+            print(f"[AUDIO] music file not found: {path}")
+        return
+    if _current_music == path and pygame.mixer.music.get_busy():
+        return
+    try:
+        pygame.mixer.music.load(path)
+        pygame.mixer.music.set_volume(_music_volume)
+        pygame.mixer.music.play(loops=loops)
+        _current_music = path
+        if config.debug and config.debug_audio:
+            print(f"[AUDIO] playing BGM from: {path}")
+    except pygame.error as e:
+        if config.debug and config.debug_audio:
+            print(f"[AUDIO] failed to play {path}: {e}")
+
+
 def stop_music(fade_ms=500):
     global _current_music
     if not _inited or not config.AUDIO_ENABLED:

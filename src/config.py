@@ -1,5 +1,5 @@
-SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 600
+SCREEN_WIDTH = 1920
+SCREEN_HEIGHT = 1080
 SCREEN_TITLE = "Moon Race"
 
 COLOR_BACKGROUND = (0, 0, 0)
@@ -25,18 +25,84 @@ SAVE_DIR = "saves"
 SAVE_FILE = "light_side_save.json"
 
 BUILDING_TYPES = [
-    {"name": "Foundation",  "w": 1, "h": 1, "cost": 10, "color": (139, 90,  43), "sprite_rect": (275,710,325,750)},
-    {"name": "Wall",        "w": 2, "h": 1, "cost": 50, "color": (100, 100, 100), "sprite_rect": (600,631,700,680)},
-    {"name": "Tower",       "w": 1, "h": 2, "cost": 50, "color": (70,  70,  90), "sprite_rect": (190,695,235,750)},
-    {"name": "House",       "w": 2, "h": 2, "cost": 100, "color": (160, 82,  45), "sprite_rect": (695,255,765,330)},
-    {"name": "Workshop",    "w": 2, "h": 3, "cost": 200, "color": (180, 120, 60), "sprite_rect": (270,765,335,830)},
-    {"name": "Mansion",     "w": 3, "h": 3, "cost": 300, "color": (100, 149, 237), "sprite_rect": (640,700,750,760)},
-    {"name": "Palace",      "w": 4, "h": 4, "cost": 500, "color": (218, 165, 32), "sprite_rect": (360,705,495,830)},
-    {"name": "Observatory", "w": 2, "h": 4, "cost": 400, "color": (147, 112, 219), "sprite_rect": (430,433,490,553)},
-    {"name": "green_house", "w": 4, "h": 2, "cost": 450, "color": (34, 139, 34), "sprite_rect": (355,945,505,1000)}
+    {
+        "name": "Foundation",
+        "w": 1,
+        "h": 1,
+        "cost": 10,
+        "color": (139, 90, 43),
+        "sprite_rect": (275, 710, 325, 750),
+    },
+    {
+        "name": "Wall",
+        "w": 2,
+        "h": 1,
+        "cost": 50,
+        "color": (100, 100, 100),
+        "sprite_rect": (600, 631, 700, 680),
+    },
+    {
+        "name": "Tower",
+        "w": 1,
+        "h": 2,
+        "cost": 50,
+        "color": (70, 70, 90),
+        "sprite_rect": (190, 695, 235, 750),
+    },
+    {
+        "name": "House",
+        "w": 2,
+        "h": 2,
+        "cost": 100,
+        "color": (160, 82, 45),
+        "sprite_rect": (695, 255, 765, 330),
+    },
+    {
+        "name": "Workshop",
+        "w": 2,
+        "h": 3,
+        "cost": 200,
+        "color": (180, 120, 60),
+        "sprite_rect": (270, 765, 335, 830),
+    },
+    {
+        "name": "Mansion",
+        "w": 3,
+        "h": 3,
+        "cost": 300,
+        "color": (100, 149, 237),
+        "sprite_rect": (640, 700, 750, 760),
+    },
+    {
+        "name": "Palace",
+        "w": 4,
+        "h": 4,
+        "cost": 500,
+        "color": (218, 165, 32),
+        "sprite_rect": (360, 705, 495, 830),
+    },
+    {
+        "name": "Observatory",
+        "w": 2,
+        "h": 4,
+        "cost": 400,
+        "color": (147, 112, 219),
+        "sprite_rect": (430, 433, 490, 553),
+    },
+    {
+        "name": "green_house",
+        "w": 4,
+        "h": 2,
+        "cost": 450,
+        "color": (34, 139, 34),
+        "sprite_rect": (355, 945, 505, 1000),
+    },
 ]
 
 MUSIC_DIR = "music"
+
+LIGHT_MUSIC = "/home/serv/Desktop/ISE/music/light.mp3"
+DARK_MUSIC = "/home/serv/Desktop/ISE/music/dark.mp3"
 
 AUDIO_ENABLED = True
 DEFAULT_MUSIC_VOLUME = 0.5
@@ -62,6 +128,57 @@ ENABLE_GLSL = False
 DARK_COUNTDOWN_SECONDS = 3
 DARK_MINING_SECONDS = 60
 
+# ── dark_2 (alien evasion) ─────────────────────────────────────────────
+DARK2_PLAYER_RADIUS = 20
+DARK2_PLAYER_ACCEL = 1600.0
+DARK2_PLAYER_MAX_SPEED = 200.0
+DARK2_PLAYER_FRICTION = 0.85
+
+DARK2_ENEMY_RADIUS = 10
+DARK2_ENEMY_BASE_SPEED = 90.0
+DARK2_ENEMY_SPAWN_INTERVAL = 5000
+DARK2_ENEMY_GROW_INTERVAL = 10000
+DARK2_ENEMY_GROW_MAX_RADIUS = 20
+
+DARK2_DIFFICULTY_RATE = 0.15
+DARK2_DIFFICULTY_MAX_MULTIPLIER = 3.0
+DARK2_SCORE_PER_SECOND = 5
+
+DARK2_SHATTER_TIME = 15000
+DARK2_VICTORY_DELAY = 2000
+DARK2_BLINK_DURATION = 500
+
+DARK2_BULLET_RADIUS = 3
+DARK2_BULLET_SPEED = 350.0
+DARK2_BULLET_LIFETIME = 3000
+
+# ── move: dash ──────────────────────────────────────────────────────────
+DARK2_MOVE_DASH_DISTANCE = 250
+DARK2_MOVE_DASH_CHANCE = 0.015
+DARK2_MOVE_DASH_COOLDOWN = 4000
+DARK2_MOVE_DASH_WINDUP_MS = 500
+DARK2_MOVE_DASH_SPEED = 800.0
+DARK2_MOVE_DASH_DURATION_MS = 300
+
+# ── move: shoot_bullets ─────────────────────────────────────────────────
+DARK2_MOVE_SHOOT_CHANCE = 0.01
+DARK2_MOVE_SHOOT_COOLDOWN = 5000
+DARK2_MOVE_SHOOT_WINDUP_MS = 400
+DARK2_MOVE_SHOOT_COUNT = 3
+DARK2_MOVE_SHOOT_SPREAD = 0.3
+
+# ── move: explode ───────────────────────────────────────────────────────
+DARK2_MOVE_EXPLODE_CHANCE = 0.005
+DARK2_MOVE_EXPLODE_COOLDOWN = 8000
+DARK2_MOVE_EXPLODE_BLINKS = 3
+DARK2_MOVE_EXPLODE_BLINK_INTERVAL_MS = 400
+DARK2_MOVE_EXPLODE_BULLET_COUNT = 8
+
+# ── move: attract ───────────────────────────────────────────────────────
+DARK2_MOVE_ATTRACT_CHANCE = 0.008
+DARK2_MOVE_ATTRACT_COOLDOWN = 6000
+DARK2_MOVE_ATTRACT_SPEED = 250.0
+
 # ── cat ────────────────────────────────────────────────────────────────
 CAT_SPRITES_DIR = "assets/images/cat"
 CAT_SCALE = 1.5
@@ -73,16 +190,21 @@ CAT_IDLE_DURATION_RANGE = (2000, 6000)
 CAT_RUN_DURATION_RANGE = (3000, 8000)
 CAT_HISS_DURATION_RANGE = (1000, 3000)
 CAT_ANIM_FPS = {
-    "idle_1": 4, "idle_2": 4,
-    "run_1": 8, "run_2": 8,
+    "idle_1": 4,
+    "idle_2": 4,
+    "run_1": 8,
+    "run_2": 8,
     "jump": 8,
-    "hiss": 8, "lick_1": 4, "lick_2": 4,
-    "punch": 6, "sleep": 4,
+    "hiss": 8,
+    "lick_1": 4,
+    "lick_2": 4,
+    "punch": 6,
+    "sleep": 4,
 }
 CAT_TRANSITIONS = {
-    "idle":  {"run": 55, "jump": 15, "climb": 10, "idle": 20},
-    "run":   {"idle": 45, "jump": 20, "climb": 5, "run": 30},
-    "jump":  {"idle": 50, "run": 50},
+    "idle": {"run": 55, "jump": 15, "climb": 10, "idle": 20},
+    "run": {"idle": 45, "jump": 20, "climb": 5, "run": 30},
+    "jump": {"idle": 50, "run": 50},
     "climb": {"idle": 60, "run": 40},
 }
 
@@ -104,6 +226,7 @@ show_grid = False
 _fps = 0
 _save_name = "default"
 _mine_requested = False
+_alien_requested = False
 
 
 def set_fps(v):
@@ -136,6 +259,20 @@ def get_mine_requested():
 def clear_mine_requested():
     global _mine_requested
     _mine_requested = False
+
+
+def set_alien_requested(v):
+    global _alien_requested
+    _alien_requested = v
+
+
+def get_alien_requested():
+    return _alien_requested
+
+
+def clear_alien_requested():
+    global _alien_requested
+    _alien_requested = False
 
 
 def get_screen_center():

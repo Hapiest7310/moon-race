@@ -52,6 +52,7 @@ class LevelLight(Level):
 
         self._mode_rect = pygame.Rect(10, 74, 130, 28)
         self._mine_rect = pygame.Rect(config.SCREEN_WIDTH - 180, 74, 170, 28)
+        self._alien_rect = pygame.Rect(config.SCREEN_WIDTH - 180, 108, 170, 28)
 
         self._snow_overlay = pygame.Surface(
             (config.SCREEN_WIDTH, config.SCREEN_HEIGHT), pygame.SRCALPHA
@@ -257,6 +258,11 @@ class LevelLight(Level):
                 config.set_mine_requested(True)
                 if config.debug:
                     print("[MINE] requested dark side mining")
+                return
+            if self._alien_rect.collidepoint(event.pos):
+                config.set_alien_requested(True)
+                if config.debug:
+                    print("[ALIEN] requested alien evasion")
                 return
             for widget in self.widgets:
                 if widget.handle_event(event):
@@ -497,7 +503,7 @@ class LevelLight(Level):
         self.building_menu.money = self.money
         self.building_menu.visible = self.mode == "CONSTRUCT"
         px, py = pygame.mouse.get_pos()
-        if self._is_over_widget((px, py)) or self._mode_rect.collidepoint((px, py)) or self._mine_rect.collidepoint((px, py)):
+        if self._is_over_widget((px, py)) or self._mode_rect.collidepoint((px, py)) or self._mine_rect.collidepoint((px, py)) or self._alien_rect.collidepoint((px, py)):
             self._hover_cell = None
         else:
             gx, gy = self.grid.pixel_to_grid(px, py)
@@ -523,6 +529,7 @@ class LevelLight(Level):
             widget.draw(self.surface)
         self._draw_mode_toggle()
         self._draw_mine_button()
+        self._draw_alien_button()
         self._draw_money()
         # debug: cat plan and state
         try:
@@ -654,6 +661,15 @@ class LevelLight(Level):
         label = self._mine_font.render("Mine Asteroids", True, (220, 225, 255))
         tx = self._mine_rect.x + (self._mine_rect.w - label.get_width()) // 2
         ty = self._mine_rect.y + (self._mine_rect.h - label.get_height()) // 2
+        self.surface.blit(label, (tx, ty))
+
+    def _draw_alien_button(self):
+        bg = (100, 60, 120)
+        pygame.draw.rect(self.surface, bg, self._alien_rect)
+        pygame.draw.rect(self.surface, (180, 150, 200), self._alien_rect, 1)
+        label = self._mine_font.render("Alien Evasion", True, (220, 215, 240))
+        tx = self._alien_rect.x + (self._alien_rect.w - label.get_width()) // 2
+        ty = self._alien_rect.y + (self._alien_rect.h - label.get_height()) // 2
         self.surface.blit(label, (tx, ty))
 
     def _draw_money(self):

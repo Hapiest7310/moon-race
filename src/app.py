@@ -9,6 +9,7 @@ from src.ui import spinner
 from src import audio
 from src.levels.light.level_light import LevelLight
 from src.levels.dark.level_dark import LevelDark
+from src.levels.dark_2.level_dark2 import LevelDark2
 
 
 class App:
@@ -86,7 +87,7 @@ class App:
             if config.debug and config.debug_app:
                 print("[APP] TRANSITION → PLAYING")
             self.level = LevelLight(self.surface, config.get_save_name())
-            audio.play_music("11")
+            audio.play_music_file(config.LIGHT_MUSIC)
             self.state = "PLAYING"
 
     def _update_playing(self, dt, events):
@@ -108,18 +109,31 @@ class App:
         if config.get_mine_requested():
             config.clear_mine_requested()
             self._enter_minigame()
+        if config.get_alien_requested():
+            config.clear_alien_requested()
+            self._enter_alien_minigame()
 
     def _enter_minigame(self):
         if config.debug and config.debug_app:
             print("[APP] entering dark side minigame")
+        audio.play_music_file(config.DARK_MUSIC)
         self._saved_level = self.level
         self._minigame = True
         self.level = LevelDark(self.surface, minigame=True)
+
+    def _enter_alien_minigame(self):
+        if config.debug and config.debug_app:
+            print("[APP] entering alien evasion minigame")
+        audio.play_music_file(config.DARK_MUSIC)
+        self._saved_level = self.level
+        self._minigame = True
+        self.level = LevelDark2(self.surface, minigame=True)
 
     def _exit_minigame(self):
         earnings = self.level.score
         if config.debug and config.debug_app:
             print(f"[APP] exiting dark side minigame, earnings={earnings}")
+        audio.play_music_file(config.LIGHT_MUSIC)
         if isinstance(self._saved_level, LevelLight):
             self._saved_level.money += earnings
             if config.debug:
