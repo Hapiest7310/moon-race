@@ -23,6 +23,13 @@ class BuildingMenu(Widget):
         for _ in self._buildable_types:
             self._button_rects.append(pygame.Rect(0, 0, self.BTN_W, self.BTN_H))
 
+    def select_by_key(self, key_number):
+        idx = key_number - 1
+        if 0 <= idx < len(self._buildable_types):
+            self.selected_index = idx
+            return True
+        return False
+
     def get_selected_building(self):
         return self._buildable_types[self.selected_index]
 

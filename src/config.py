@@ -36,13 +36,6 @@ BUILDING_TYPES = [
         "indestructible": True,
     },
     {
-        "name": "Mountain",
-        "w": 1,
-        "h": 1,
-        "cost": 150,
-        "color": (128, 115, 95),
-    },
-    {
         "name": "Foundation",
         "w": 1,
         "h": 1,
@@ -200,12 +193,9 @@ DARK2_MOVE_ATTRACT_SPEED = 250.0
 CAT_SPRITES_DIR = "assets/images/cat"
 CAT_SCALE = 1.5
 CAT_START_X = 200
-CAT_RUN_SPEED = 2
-CAT_JUMP_HEIGHT = 40
-CAT_JUMP_FRAMES = 30
-CAT_IDLE_DURATION_RANGE = (2000, 6000)
-CAT_RUN_DURATION_RANGE = (3000, 8000)
-CAT_HISS_DURATION_RANGE = (1000, 3000)
+CAT_GRAVITY = 1200.0
+CAT_WALK_SPEED = 180.0
+CAT_JUMP_VELOCITY = -480.0
 CAT_ANIM_FPS = {
     "idle_1": 4,
     "idle_2": 4,
@@ -218,24 +208,8 @@ CAT_ANIM_FPS = {
     "punch": 6,
     "sleep": 4,
 }
-CAT_TRANSITIONS = {
-    "idle": {"run": 55, "jump": 15, "climb": 10, "idle": 20},
-    "run": {"idle": 45, "jump": 20, "climb": 5, "run": 30},
-    "jump": {"idle": 50, "run": 50},
-    "climb": {"idle": 60, "run": 40},
-}
-
-# movement on the grid (pixels per second)
-CAT_GRID_SPEED = 120
-# vertical jump overshoot fraction (extra above target height)
-CAT_JUMP_OVERSHOOT_FACTOR = 0.25
-# time per grid row when climbing vertically (ms)
-CAT_CLIMB_MS_PER_ROW = 120
-# cat debug flags
-debug_cat_plan = True
 debug_cat_state = True
-# allow manual setting of cat target block (debug)
-debug_cat_manual_target = True
+debug_cat_manual = True
 
 cheat_coins = True
 show_grid = False
@@ -309,31 +283,8 @@ def get_moon_position():
 
 
 def generate_ground_layers():
-    cols = list(range(GRID_COLS))
     buildings = []
-
-    # Layer 0: full ground
-    for gx in cols:
-        buildings.append({"type": "Ground", "gx": gx, "gy": 0})
-
-    # Layer 1: half ground, half mountain
-    random.shuffle(cols)
-    half = max(len(cols) // 2, 1)
-    ground1 = set(cols[:half])
-    for gx in range(GRID_COLS):
-        t = "Ground" if gx in ground1 else "Mountain"
-        buildings.append({"type": t, "gx": gx, "gy": 1})
-
-    # Layer 2: halve again — ground on survivors, mountain on removed,
-    #           nothing where layer 1 already had mountain
-    ground1_list = sorted(ground1)
-    random.shuffle(ground1_list)
-    half2 = max(len(ground1_list) // 2, 1)
-    ground2 = set(ground1_list[:half2])
-    for gx in range(GRID_COLS):
-        if gx in ground2:
-            buildings.append({"type": "Ground", "gx": gx, "gy": 2})
-        elif gx in ground1:
-            buildings.append({"type": "Mountain", "gx": gx, "gy": 2})
-
+    for gy in range(3):
+        for gx in range(GRID_COLS):
+            buildings.append({"type": "Ground", "gx": gx, "gy": gy})
     return buildings
