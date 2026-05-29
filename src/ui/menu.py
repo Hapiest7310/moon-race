@@ -224,8 +224,9 @@ def _confirm_new():
     config.set_save_name(name)
     os.makedirs(config.SAVE_DIR, exist_ok=True)
     path = os.path.join(config.SAVE_DIR, f"{name}.json")
+    ground = config.generate_ground_layers()
     with open(path, "w") as f:
-        json.dump({"money": config.STARTING_MONEY, "buildings": []}, f)
+        json.dump({"money": config.STARTING_MONEY, "buildings": ground}, f)
     _next_action = "NEW"
     _new_menu.disable()
     if config.debug and config.debug_menu:

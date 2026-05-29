@@ -341,6 +341,10 @@ class LevelLight(Level):
         building = self._get_building_at(gx, gy)
         if not building:
             return
+        if building.get("type") == "Ground":
+            if config.debug:
+                print(f"[DEMOLISH] blocked — ground tile at ({gx},{gy}) cannot be demolished")
+            return
         if self._has_building_on_top(building):
             if config.debug:
                 print(f"[DEMOLISH] blocked — building on top of {building['type']} at ({building['gx']},{building['gy']})")
@@ -718,11 +722,35 @@ class LevelLight(Level):
                 for dy in range(bt["h"]):
                     for dx in range(bt["w"]):
                         self._occupied_cells.add((entry["gx"] + dx, entry["gy"] + dy))
+            self._ensure_ground()
             if config.debug:
                 print(f"[LOAD] loaded {len(self.buildings)} buildings, money={self.money}")
         except (json.JSONDecodeError, KeyError) as e:
             if config.debug:
                 print(f"[LOAD] failed: {e}")
+
+    def _ensure_ground(self):
+        has_ground = any(b["type"] == "Ground" for b in self.buildings)
+        if has_ground:
+            return
+        ground = config.generate_ground_layers()
+        bt_map = {bt["name"]: bt for bt in config.BUILDING_TYPES}
+        for entry in ground:
+            if (entry["gx"], entry["gy"]) in self._occupied_cells:
+                continue
+            bt = bt_map[entry["type"]]
+            self.buildings.append({
+                "type": bt["name"],
+                "gx": entry["gx"],
+                "gy": entry["gy"],
+                "width": bt["w"],
+                "height": bt["h"],
+                "color": bt["color"],
+                "cost": bt["cost"],
+            })
+            self._occupied_cells.add((entry["gx"], entry["gy"]))
+        if config.debug:
+            print(f"[LOAD] generated ground tiles for old save")
 
     def get_debug_info(self):
         return f"[LEVEL] LevelLight | buildings={len(self.buildings)} money={self.money}"

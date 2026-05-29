@@ -15,15 +15,16 @@ class BuildingMenu(Widget):
         self._padding = 4
         self._name_font = pygame.font.Font(None, 14)
         self._cost_font = pygame.font.Font(None, 16)
+        self._buildable_types = [bt for bt in config.BUILDING_TYPES if not bt.get("indestructible")]
         self._build_buttons()
 
     def _build_buttons(self):
         self._button_rects = []
-        for _ in config.BUILDING_TYPES:
+        for _ in self._buildable_types:
             self._button_rects.append(pygame.Rect(0, 0, self.BTN_W, self.BTN_H))
 
     def get_selected_building(self):
-        return config.BUILDING_TYPES[self.selected_index]
+        return self._buildable_types[self.selected_index]
 
     def _get_layout(self):
         n = len(self._button_rects)
@@ -56,7 +57,7 @@ class BuildingMenu(Widget):
             return
         positions = self._get_layout()
         for i, local_rect in enumerate(positions):
-            bt = config.BUILDING_TYPES[i]
+            bt = self._buildable_types[i]
             r = pygame.Rect(
                 self.rect.x + local_rect.x,
                 self.rect.y + local_rect.y,

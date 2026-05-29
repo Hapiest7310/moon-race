@@ -1,3 +1,5 @@
+import random
+
 SCREEN_WIDTH = 1920
 SCREEN_HEIGHT = 1080
 SCREEN_TITLE = "Moon Race"
@@ -25,6 +27,14 @@ SAVE_DIR = "saves"
 SAVE_FILE = "light_side_save.json"
 
 BUILDING_TYPES = [
+    {
+        "name": "Ground",
+        "w": 1,
+        "h": 1,
+        "cost": 0,
+        "color": (255, 255, 255),
+        "indestructible": True,
+    },
     {
         "name": "Foundation",
         "w": 1,
@@ -289,3 +299,14 @@ def get_moon_position():
         SCREEN_WIDTH // 2,
         SCREEN_HEIGHT // 2 - scaled_h // 2 - BUTTON_HEIGHT - BUTTON_SPACING,
     )
+
+
+def generate_ground_layers():
+    arr = list(range(GRID_COLS))
+    buildings = []
+    for layer in range(3):
+        for gx in arr:
+            buildings.append({"type": "Ground", "gx": gx, "gy": layer})
+        random.shuffle(arr)
+        arr = arr[:max(len(arr) // 2, 1)]
+    return buildings
