@@ -36,6 +36,13 @@ BUILDING_TYPES = [
         "indestructible": True,
     },
     {
+        "name": "Mountain",
+        "w": 1,
+        "h": 1,
+        "cost": 150,
+        "color": (128, 115, 95),
+    },
+    {
         "name": "Foundation",
         "w": 1,
         "h": 1,
@@ -302,11 +309,31 @@ def get_moon_position():
 
 
 def generate_ground_layers():
-    arr = list(range(GRID_COLS))
+    cols = list(range(GRID_COLS))
     buildings = []
-    for layer in range(3):
-        for gx in arr:
-            buildings.append({"type": "Ground", "gx": gx, "gy": layer})
-        random.shuffle(arr)
-        arr = arr[:max(len(arr) // 2, 1)]
+
+    # Layer 0: full ground
+    for gx in cols:
+        buildings.append({"type": "Ground", "gx": gx, "gy": 0})
+
+    # Layer 1: half ground, half mountain
+    random.shuffle(cols)
+    half = max(len(cols) // 2, 1)
+    ground1 = set(cols[:half])
+    for gx in range(GRID_COLS):
+        t = "Ground" if gx in ground1 else "Mountain"
+        buildings.append({"type": t, "gx": gx, "gy": 1})
+
+    # Layer 2: halve again — ground on survivors, mountain on removed,
+    #           nothing where layer 1 already had mountain
+    ground1_list = sorted(ground1)
+    random.shuffle(ground1_list)
+    half2 = max(len(ground1_list) // 2, 1)
+    ground2 = set(ground1_list[:half2])
+    for gx in range(GRID_COLS):
+        if gx in ground2:
+            buildings.append({"type": "Ground", "gx": gx, "gy": 2})
+        elif gx in ground1:
+            buildings.append({"type": "Mountain", "gx": gx, "gy": 2})
+
     return buildings
