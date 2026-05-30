@@ -1,1 +1,1 @@
-# Moon Race - A 2D game with pygame
+"""Moon Race - A 2D racing game built with pygame."""

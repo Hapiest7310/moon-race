@@ -3,7 +3,7 @@
 ## Overview
 
 A 2D pixel-art game built with **Pygame CE** and **pygame_menu** for a university assignment (CT029-3-2 Imaging and Special Effects).  
-Two-level moon-themed game with a city-builder (Light Side) and an Asteroids-mining (Dark Side) level.
+Three-level moon-themed game: city-builder (Light Side), Asteroids mining (Dark Side), and Alien Evasion (Dark Side 2).
 
 **Resolution:** 1920×1080 fullscreen  
 **Framerate:** 60 FPS  
@@ -19,6 +19,7 @@ music/
 └── 11.mp3                ← Background music track
 src/
 ├── audio.py              ← Audio manager (BGM + SFX, volume control)
+├── debug.py              ← DebugManager (named sources, interval-based printing)
 ├── config.py             ← Constants + debug flags + building types + save name
 ├── app.py                ← State machine (MENU → TRANSITION → PLAYING / PAUSED)
 ├── menu.py               ← pygame_menu UI (Main, Start, New, Load, Options, Sound, Pause)
@@ -27,13 +28,14 @@ src/
 ├── grid.py               ← Bottom-left origin grid (Light Side only)
 ├── widget/
 │   ├── __init__.py       ← Widget base class
-│   ├── color_picker.py   ← 8-color picker widget (legacy)
 │   └── building_menu.py  ← Building type selector with cost display
 └── levels/
     ├── __init__.py
     ├── level_base.py     ← Abstract Level interface
     ├── level_light.py    ← Light Side (city-builder, buildings, save/load, drop animation)
-    └── level_dark.py     ← Dark Side (Asteroids clone with shader-like effects)
+    ├── level_dark.py     ← Dark Side (Asteroids clone with shader-like effects)
+    └── dark_2/
+        └── level_dark2.py ← Alien Evasion minigame
 ```
 
 ---
@@ -49,7 +51,7 @@ Managed by `App` in `app.py`. Five states:
 | `PLAYING` | After transition | `_update_playing()` | Delegates to level; ESC → PAUSED. Also handles **minigame** switching (dark side mining) |
 | `PAUSED` | ESC in gameplay | `_update_paused()` | Level dims, pause menu overlay; ESC/Continue → PLAYING, Quit → MENU |
 
-When in minigame mode (dark side), `_update_playing` calls `_update_minigame()` instead, which runs LevelDark's loop and auto-exits back to the saved light level when done.
+When in minigame mode (dark side or alien evasion), `_update_playing` calls `_update_minigame()` instead, which runs the minigame level's loop and auto-exits back to the saved light level when done.
 
 Transitions:
 ```
@@ -57,8 +59,9 @@ MENU → (New/Load) → TRANSITION → (timer) → PLAYING ↔ (ESC) → PAUSED
                                                   ↑               │
                                                   └─── Quit ──────┘
                                                        (ESC/Continue)
-                                                       
-PLAYING (light) → [Mine button] → minigame (dark) → [ESC/game over] → PLAYING (light, +coins)
+                                                        
+PLAYING (light) → [Mine button] → asteroids (dark)  → [ESC/game over] → PLAYING (light, +coins)
+PLAYING (light) → [Alien button] → alien evasion → [ESC/game over] → PLAYING (light, +coins)
 ```
 
 ---
@@ -89,24 +92,32 @@ Audio initialisation (`audio.init()`, `audio.load_all()`) happens before the dis
 | `DEFAULT_MUSIC_VOLUME` / `DEFAULT_SFX_VOLUME` | 0.5 / 0.7 |
 | `DROP_ANIMATION_MS` | 500 — duration of building placement drop animation |
 | `DARK_COUNTDOWN_SECONDS` | 3 — countdown before dark side mining starts |
+| `GROUND_LAYERS` | 6 — layers of procedural ground generated for new saves |
+| `CAT_*` | 15+ constants for cat physics, animation, and scale |
+| `DARK2_*` | 30+ constants for alien evasion gameplay, moves, and scoring |
+| `generate_ground_layers()` | Returns list of Ground tiles for new save files |
 | `set_save_name(name)` / `get_save_name()` | Mutable current save slot |
 | `set_fps(v)` / `get_fps()` | Stores/runs current FPS |
 | `set_mine_requested(v)` / `get_mine_requested()` | Flag for light→dark side transition |
+| `set_alien_requested(v)` / `get_alien_requested()` | Flag for light→alien evasion transition |
 
 #### Debug flags
 
 | Flag | Default | Controls |
 |------|---------|---------|
-| `debug` | True | Master toggle |
+| `debug` | False | Master toggle |
 | `debug_mouse` | True | Mouse-to-grid coordinate prints |
-| `debug_grid` | True | Grid lines + boundary + info text |
+| `debug_grid` | False | Grid lines + boundary + info text |
 | `debug_widgets` | True | Widget debug borders + info |
 | `debug_app` | True | State transition prints |
 | `debug_spinner` | True | Spinner start/stop prints |
 | `debug_hover` | True | Hover cell coordinate label |
+| `debug_cells` | True | Cell occupancy debug |
 | `debug_layout` | True | Layout bounding rects |
 | `debug_menu` | True | Menu navigation prints |
 | `debug_audio` | True | Audio init / play / stop prints |
+| `debug_cat_state` | True | Cat bounding box + behavior text |
+| `debug_cat_manual` | True | Keyboard control for Cat |
 
 #### Building types
 
@@ -131,14 +142,11 @@ Module-level singleton (same pattern as `spinner.py`). Any module can call `audi
 |----------|---------|
 | `init()` | `pygame.mixer.init()` with 44.1kHz/16-bit/stereo; no-op if already inited or `AUDIO_ENABLED` is False |
 | `load_all()` | Scan `MUSIC_DIR` for `.mp3`/`.ogg`/`.wav` files, register by filename stem |
-| `play_music(name, loops=-1)` | Load and loop BGM track by stem name; skips if already playing |
+| `play_music_file(path, loops=-1)` | Load and loop BGM by file path; skips if already playing |
 | `stop_music(fade_ms=500)` | Fade out and stop BGM |
 | `set_music_volume(vol)` | 0.0–1.0, applied immediately |
 | `set_sfx_volume(vol)` | 0.0–1.0, applied to all cached SFX |
-| `load_sfx(name, path)` | Load a `pygame.mixer.Sound` by name |
-| `play_sfx(name)` | Play one-shot SFX |
 | `get_music_volume()` / `get_sfx_volume()` | Current volume levels |
-| `is_playing()` | `True` if mixer is active and music is playing |
 
 All functions are safe to call even if `AUDIO_ENABLED = False` or `mixer.init()` failed — they silently no-op and log with `debug_audio`.
 
@@ -153,9 +161,10 @@ All functions are safe to call even if `AUDIO_ENABLED = False` or `mixer.init()`
 | `_update_menu(dt, events)` | Moon animation + menu processing; checks for NEW/LOAD action to start transition |
 | `_update_transition(dt, events)` | 2s countdown, then creates LevelLight/LevelDark and starts BGM |
 | `_update_playing(dt, events)` | Delegates to level; checks for minigame flag / mine request |
-| `_enter_minigame()` | Saves current light level, creates LevelDark(minigame=True), sets minigame flag |
-| `_exit_minigame()` | Transfers dark side score as coins to light level, restores saved level |
-| `_update_minigame(dt, events)` | Runs LevelDark's loop; auto-exits when `is_minigame_done()` returns True |
+| `_enter_minigame()` | Saves current light level, creates LevelDark (asteroids) |
+| `_enter_alien_minigame()` | Saves current light level, creates LevelDark2 (alien evasion) |
+| `_exit_minigame()` | Transfers minigame score as coins to saved light level, restores it |
+| `_update_minigame(dt, events)` | Runs minigame level loop; auto-exits when `is_minigame_done()` returns True |
 | `_update_paused(dt, events)` | Draws level + 128-alpha dim overlay; processes pause menu |
 
 Key design: `App` does NOT know what the level does internally — it calls the `Level` interface methods.
@@ -426,16 +435,84 @@ Pressing **ESC** during gameplay transitions to the `PAUSED` state:
 
 ---
 
-### Minigame system (Dark Side mining)
+#### `level_dark2.py` — Dark Side 2 (Alien Evasion)
 
-From the Light Side level, clicking the **"Mine Asteroids"** button (top-right HUD) triggers the dark side mining minigame:
+Top-down dodge-em-up with AI-driven enemies. Drawn entirely with `pygame.draw.*` shapes.
 
-1. The App saves the current light level instance
+| Method | Purpose |
+|--------|---------|
+| `__init__(surface, minigame=False, dm=None)` | Init game state, countdown, starfield, particle/shake systems |
+| `_init_game()` | Reset score, lives, enemies, timers for a new round |
+| `_spawn_enemy()` | Place enemy at random position ≥ `DARK2_SPAWN_MARGIN` from edges, ≥ `DARK2_SPAWN_MIN_PLAYER_DIST` from player |
+| `_predict_player_pos()` | Estimate future player position from movement history bias |
+| `handle_event(event)` | ESC to exit, any key after game over to return |
+| `update(dt)` | Score accumulation, player movement, enemy AI, bullet updates, collisions |
+| `draw()` | Stars → enemies → bullets → particles → player → glow → HUD (score + lives) → screen shake |
+| `_check_collisions()` | Distance-based hit test vs enemies and bullets |
+| `_on_player_hit()` | Decrement lives; at 0 → game over, else clear enemies + blink |
+| `is_minigame_done()` | Returns `True` when ESC pressed or key hit after game over |
+
+**Enemy AI moves** (selected probabilistically each frame):
+- **Dash**: Wind up, then fast linear dash toward predicted player position
+- **Shoot**: Wind up, fire spread of bullets toward player
+- **Explode**: Blink, then detonate in a radial bullet burst
+- **Attract**: Pair with another enemy, accelerate toward each other, merge-explode on contact
+
+**Game rules**:
+- 3 lives (`DARK2_PLAYER_LIVES`), lost on enemy/bullet collision
+- Score = `floor(elapsed_seconds) * DARK2_COINS_PER_SECOND` (10/sec)
+- No time limit — game only ends when all lives are lost
+- Difficulty ramps: enemy speed multiplier increases over time
+- Enemies grow larger if player avoids them too long
+
+**Config constants** (all prefixed `DARK2_`):
+
+| Constant | Value | Purpose |
+|----------|-------|---------|
+| `PLAYER_RADIUS` | 20 | Player collision radius |
+| `PLAYER_ACCEL` | 1600.0 | Player acceleration (px/s²) |
+| `PLAYER_MAX_SPEED` | 200.0 | Player speed cap |
+| `PLAYER_FRICTION` | 0.85 | Velocity damping per frame |
+| `ENEMY_RADIUS` | 10 | Base enemy radius |
+| `ENEMY_BASE_SPEED` | 90.0 | Base enemy chase speed |
+| `ENEMY_SPAWN_INTERVAL` | 5000 | ms between new enemy spawns |
+| `ENEMY_GROW_INTERVAL` | 10000 | ms without hit before enemies grow |
+| `ENEMY_GROW_MAX_RADIUS` | 20 | Max enemy size from growth |
+| `DIFFICULTY_RATE` | 0.15 | Speed multiplier increase per 60s |
+| `DIFFICULTY_MAX_MULTIPLIER` | 3.0 | Max difficulty scaling |
+| `COINS_PER_SECOND` | 10 | Score earned per second survived |
+| `PLAYER_LIVES` | 3 | Hits before game over |
+| `BLINK_DURATION` | 500 | ms invulnerability after hit |
+| `SPAWN_MARGIN` | 80 | Min px from screen edge for spawn |
+| `SPAWN_MIN_PLAYER_DIST` | 200 | Min px from player for spawn |
+| `PREDICT_OFFSET` | 200.0 | Look-ahead px for player prediction |
+| `STAR_COUNT` | 160 | StarField particle count |
+| `SHAKE_HIT` | 4 | Screen shake intensity on hit |
+
+Move-specific constants (`DARK2_MOVE_DASH_*`, `DARK2_MOVE_SHOOT_*`, etc.) control each AI move's chance, cooldown, and parameters.
+
+---
+
+### Minigame system (Dark Side mining & Alien Evasion)
+
+Two minigames are accessible from the Light Side level via HUD buttons (top-right):
+
+**Mine Asteroids** (`LevelDark`):
+1. App saves the current light level instance
 2. Creates `LevelDark(self.surface, minigame=True)`
-3. 3-2-1 countdown, then play Asteroids
+3. 3-2-1 countdown, then play Asteroids (60s time limit)
 4. ESC or game-over → exits back to light level
-5. All score/coins earned during mining are added to the light level's money
-6. Light level BGM continues playing throughout
+5. Score (asteroid destruction) added as coins to light level money
+
+**Alien Evasion** (`LevelDark2`):
+1. App saves the current light level instance
+2. Creates `LevelDark2(self.surface, minigame=True)`
+3. 3-2-1 countdown, then dodge enemies endlessly
+4. Game ends only when all 3 lives are lost
+5. Coins = `floor(seconds_survived) * 10`
+6. ESC to exit early (no coins)
+
+Both restore the light level and its BGM on exit.
 
 ---
 

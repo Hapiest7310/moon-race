@@ -19,14 +19,17 @@ _sound_origin = "options"
 
 
 def _on_music_volume(value):
+    """Callback for the music volume slider."""
     audio.set_music_volume(value / 100)
 
 
 def _on_sfx_volume(value):
+    """Callback for the SFX volume slider."""
     audio.set_sfx_volume(value / 100)
 
 
 def _list_save_files():
+    """List save file names sorted alphabetically."""
     if not os.path.isdir(config.SAVE_DIR):
         return []
     return sorted(
@@ -35,6 +38,7 @@ def _list_save_files():
 
 
 def _refresh_load_menu():
+    """Rebuild the load menu with current save files."""
     _load_menu.clear()
     saves = _list_save_files()
     if not saves:
@@ -46,6 +50,7 @@ def _refresh_load_menu():
 
 
 def create_menus():
+    """Create and configure all game menu screens."""
     global _main_menu, _start_menu, _new_menu, _load_menu
     global _options_menu, _sound_menu, _new_name_input, _pause_menu
 
@@ -101,12 +106,14 @@ def create_menus():
 
 
 def get_main_menu():
+    """Return the main menu instance."""
     return _main_menu
 
 
 # ── navigation ────────────────────────────────────────────────────────
 
 def _open_start():
+    """Navigate from main menu to start menu."""
     _main_menu.disable()
     _start_menu.enable()
     if config.debug and config.debug_menu:
@@ -114,6 +121,7 @@ def _open_start():
 
 
 def _open_new_menu():
+    """Navigate from start menu to new game menu."""
     _start_menu.disable()
     _new_name_input.set_value("")
     _new_menu.enable()
@@ -122,6 +130,7 @@ def _open_new_menu():
 
 
 def _open_load_menu():
+    """Navigate from start menu to load game menu."""
     _start_menu.disable()
     _refresh_load_menu()
     _load_menu.enable()
@@ -130,6 +139,7 @@ def _open_load_menu():
 
 
 def _open_options():
+    """Navigate from main menu to options menu."""
     _main_menu.disable()
     _options_menu.enable()
     if config.debug and config.debug_menu:
@@ -137,6 +147,7 @@ def _open_options():
 
 
 def _open_sound():
+    """Navigate from options menu to sound settings."""
     global _sound_origin
     _sound_origin = "options"
     _options_menu.disable()
@@ -146,6 +157,7 @@ def _open_sound():
 
 
 def _open_sound_from_pause():
+    """Navigate from pause menu to sound settings."""
     global _sound_origin
     _sound_origin = "pause"
     _pause_menu.disable()
@@ -155,6 +167,7 @@ def _open_sound_from_pause():
 
 
 def _back_to_start():
+    """Navigate back to the start menu."""
     _new_menu.disable()
     _load_menu.disable()
     _start_menu.enable()
@@ -163,6 +176,7 @@ def _back_to_start():
 
 
 def _back_to_main():
+    """Navigate back to the main menu from any submenu."""
     _start_menu.disable()
     _new_menu.disable()
     _load_menu.disable()
@@ -175,6 +189,7 @@ def _back_to_main():
 
 
 def _back_from_sound():
+    """Return to the menu that opened sound settings."""
     _sound_menu.disable()
     if _sound_origin == "pause":
         _pause_menu.enable()
@@ -185,6 +200,7 @@ def _back_from_sound():
 # ── pause actions ─────────────────────────────────────────────────────
 
 def _continue_game():
+    """Set action to continue the game from pause."""
     global _pause_action
     _pause_action = "CONTINUE"
     _pause_menu.disable()
@@ -193,6 +209,7 @@ def _continue_game():
 
 
 def _quit_to_menu():
+    """Set action to quit the game back to the menu."""
     global _pause_action
     _pause_action = "QUIT"
     _pause_menu.disable()
@@ -201,14 +218,17 @@ def _quit_to_menu():
 
 
 def open_pause_menu():
+    """Enable and display the pause menu."""
     _pause_menu.enable()
 
 
 def get_pause_action():
+    """Return the current pause action."""
     return _pause_action
 
 
 def clear_pause_action():
+    """Reset the pause action to its default state."""
     global _pause_action
     _pause_action = "NONE"
 
@@ -216,6 +236,7 @@ def clear_pause_action():
 # ── save / load actions ───────────────────────────────────────────────
 
 def _confirm_new():
+    """Create a new save file and set action to start the game."""
     global _next_action
     name = _new_name_input.get_value().strip()
     if not name:
@@ -234,6 +255,7 @@ def _confirm_new():
 
 
 def _select_save(name):
+    """Select a save file and set action to load the game."""
     global _next_action
     config.set_save_name(name)
     _next_action = "LOAD"
@@ -243,19 +265,23 @@ def _select_save(name):
 
 
 def _show_keybindings():
+    """Display the keybindings reference."""
     print("Keybindings — not implemented yet")
 
 
 def get_action():
+    """Return the current game flow action."""
     return _next_action
 
 
 def clear_action():
+    """Reset the game flow action to its default state."""
     global _next_action
     _next_action = "NONE"
 
 
 def enable_main_menu():
+    """Disable all submenus and enable the main menu."""
     _start_menu.disable()
     _new_menu.disable()
     _load_menu.disable()
@@ -268,6 +294,7 @@ def enable_main_menu():
 
 
 def update_menus(events_list):
+    """Forward events to all currently enabled menus."""
     main_was = _main_menu.is_enabled()
     start_was = _start_menu.is_enabled()
     new_was = _new_menu.is_enabled()
@@ -292,6 +319,7 @@ def update_menus(events_list):
 
 
 def draw_menus(surface):
+    """Draw all currently enabled menus onto the surface."""
     if _main_menu.is_enabled():
         _main_menu.draw(surface)
     if _start_menu.is_enabled():
@@ -306,3 +334,21 @@ def draw_menus(surface):
         _sound_menu.draw(surface)
     if _pause_menu.is_enabled():
         _pause_menu.draw(surface)
+
+
+def get_debug_info():
+    """Return a debug string with the active menu and current actions."""
+    active = "main"
+    if _start_menu.is_enabled():
+        active = "start"
+    if _new_menu.is_enabled():
+        active = "new"
+    if _load_menu.is_enabled():
+        active = "load"
+    if _options_menu.is_enabled():
+        active = "options"
+    if _sound_menu.is_enabled():
+        active = "sound"
+    if _pause_menu.is_enabled():
+        active = "pause"
+    return f"[MENU] active={active} action={_next_action} pause_action={_pause_action}"

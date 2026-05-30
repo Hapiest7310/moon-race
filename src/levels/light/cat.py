@@ -9,7 +9,9 @@ _IDLE_ANIMS = ["idle_1", "idle_2", "hiss", "lick_1", "lick_2", "sleep"]
 
 
 class Cat:
+    """An AI-controlled cat that walks and jumps on buildings."""
     def __init__(self, grid, occupied_getter):
+        """Initialize the cat with grid reference and animations."""
         self.animations = {}
         self._load_animations()
 
@@ -30,21 +32,20 @@ class Cat:
         self.vy = 0.0
         self.on_ground = False
         self.direction = 1
-        self._was_on_ground = True
-
         self.current_anim = "idle_1"
         self.frame = 0
         self.frame_timer = 0
         self._idle_anim_timer = 0
         self._current_idle_anim = "idle_1"
-        self._run_anim = "run_1"
 
     def _ai_input(self):
+        """Return AI movement input for the cat."""
         move_x = self.direction
         jump = False
         return move_x, jump
 
     def _ai_wall_hit(self, direction):
+        """Make the cat jump when hitting a wall."""
         cs = self.grid.cell_size
         c = self._collider()
 
@@ -70,6 +71,7 @@ class Cat:
             self.on_ground = False
 
     def _load_animations(self):
+        """Load all cat animation frames from the sprites directory."""
         base = os.path.join(os.path.dirname(__file__), "..", "..", "..", config.CAT_SPRITES_DIR)
         base = os.path.normpath(base)
         for anim_name in os.listdir(base):
@@ -90,21 +92,23 @@ class Cat:
                 self.animations[anim_name] = frames
 
     def _collider(self):
+        """Return the cat's collision rectangle."""
         cw = self.sprite_w // 2
         ch = self.sprite_h // 2
         return pygame.Rect(self.x - cw // 2, self.y - ch, cw, ch)
 
     def _grid_gy(self, py):
+        """Convert a pixel y-coordinate to grid row."""
         return (config.SCREEN_HEIGHT - py - 1) // self.grid.cell_size
 
     def _cell_solid(self, gx, gy):
+        """Check if a grid cell is occupied or out of bounds."""
         if gy < 0:
-            return True
-        if gy == 0:
             return True
         return (gx, gy) in self._get_occupied()
 
     def update(self, dt):
+        """Update the cat's position, velocity, and animation."""
         dt_sec = dt / 1000.0
 
         fps = config.CAT_ANIM_FPS.get(self.current_anim, 4)
@@ -151,9 +155,9 @@ class Cat:
             self.direction = -1
 
         self._pick_animation()
-        self._was_on_ground = self.on_ground
 
     def _resolve_horizontal(self):
+        """Resolve horizontal collisions against solid cells."""
         cs = self.grid.cell_size
         c = self._collider()
 
@@ -185,6 +189,7 @@ class Cat:
                     return
 
     def _resolve_vertical(self):
+        """Resolve vertical collisions and ground detection."""
         cs = self.grid.cell_size
         c = self._collider()
 
@@ -220,13 +225,12 @@ class Cat:
         self.on_ground = False
 
     def _pick_animation(self):
+        """Choose the current animation based on state."""
         prev = self.current_anim
         if not self.on_ground:
             self.current_anim = "jump"
         elif abs(self.vx) > 10:
-            if self._run_anim not in ("run_1", "run_2"):
-                self._run_anim = random.choice(["run_1", "run_2"])
-            self.current_anim = self._run_anim
+            self.current_anim = random.choice(["run_1", "run_2"])
             self._idle_anim_timer = 0
         else:
             self._idle_anim_timer += 1
@@ -238,12 +242,23 @@ class Cat:
             self.frame = 0
 
     def get_state(self):
+        """Return a summary of the cat's current behavior state."""
         return {
             "behavior": "jump" if not self.on_ground else ("run" if abs(self.vx) > 10 else "idle"),
             "anim": self.current_anim,
         }
 
+    def get_debug_info(self):
+        """Return a debug string with the cat's position and state."""
+        s = self.get_state()
+        return (f"[CAT] {s['behavior']} ({s['anim']}) "
+                f"pos=({int(self.x)},{int(self.y)}) "
+                f"vel=({self.vx:.0f},{self.vy:.0f}) "
+                f"{'GROUND' if self.on_ground else 'AIR'} "
+                f"dir={'R' if self.direction > 0 else 'L'}")
+
     def draw(self, surface):
+        """Draw the cat's current animation frame to the surface."""
         if self.current_anim not in self.animations:
             return
         sprite = self.animations[self.current_anim][self.frame]

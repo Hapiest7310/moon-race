@@ -10,6 +10,7 @@ from src.animations import StarField, ParticleSystem, ScreenShake
 # ── utility ──────────────────────────────────────────────────────────────
 
 def _generate_rock_verts(radius, count=None):
+    """Generate random vertex positions for an asteroid shape."""
     if count is None:
         count = random.randint(9, 14)
     verts = []
@@ -30,6 +31,7 @@ _ASTEROID_SPECS = {
 # ── Dark Side level: Asteroids ───────────────────────────────────────────
 
 class LevelDark(Level):
+    """Asteroids-themed level for the dark side of the moon."""
 
     SHIP_RADIUS = 18
     SHIP_THRUST_ACCEL = 420.0
@@ -45,14 +47,19 @@ class LevelDark(Level):
     ASTEROID_SPEED_MIN = 25
     ASTEROID_SPEED_MAX = 90
 
-    def __init__(self, surface, minigame=False):
+    def __init__(self, surface, minigame=False, dm=None):
+        """Initialise the dark level with surface and optional minigame mode."""
         super().__init__(surface)
         self._minigame_mode = minigame
+        self.dm = dm
+        if self.dm and config.debug:
+            self.dm.add_source("DARK", self.get_debug_info)
         self._init_game()
 
     # ── initialisation ─────────────────────────────────────────────────
 
     def _init_game(self):
+        """Reset all game state for a new round."""
         self.score = 0
         self.lives = 3
         self.wave = 0
@@ -98,12 +105,11 @@ class LevelDark(Level):
         self._wave_text_timer = 0
 
     def is_minigame_done(self):
+        """Return whether the minigame has finished."""
         return self._minigame_finished
 
-    def get_earnings(self):
-        return self.score
-
     def _init_ship(self):
+        """Set the player ship to its starting position and state."""
         self._ship = {
             "pos": [config.SCREEN_WIDTH // 2, config.SCREEN_HEIGHT // 2],
             "vel": [0.0, 0.0],
@@ -117,6 +123,7 @@ class LevelDark(Level):
     # ── wave management ────────────────────────────────────────────────
 
     def _start_wave(self):
+        """Increment the wave counter and spawn new asteroids."""
         self.wave += 1
         count = min(3 + self.wave, 18)
         for _ in range(count):
@@ -125,6 +132,7 @@ class LevelDark(Level):
         self._wave_text_timer = 2000
 
     def _spawn_asteroid(self, pos=None, size="large", verts=None):
+        """Create a single asteroid at the given position with the given size."""
         spec = _ASTEROID_SPECS[size]
         if pos is None:
             for _ in range(50):
@@ -158,6 +166,7 @@ class LevelDark(Level):
         })
 
     def _split_asteroid(self, a):
+        """Break an asteroid into two smaller ones after it is destroyed."""
         new_size = {"large": "medium", "medium": "small", "small": None}[a["size"]]
         if new_size is None:
             return
@@ -170,10 +179,12 @@ class LevelDark(Level):
     # ── ship helpers ───────────────────────────────────────────────────
 
     def _wrap_entity(self, e):
+        """Wrap an entity's position around the screen edges."""
         e["pos"][0] %= config.SCREEN_WIDTH
         e["pos"][1] %= config.SCREEN_HEIGHT
 
     def _reset_ship(self):
+        """Restore the ship to its initial state at screen centre."""
         self._ship["pos"] = [config.SCREEN_WIDTH // 2, config.SCREEN_HEIGHT // 2]
         self._ship["vel"] = [0.0, 0.0]
         self._ship["angle"] = -math.pi / 2
@@ -183,6 +194,7 @@ class LevelDark(Level):
         self._ship["cooldown"] = 0
 
     def _get_ship_points(self):
+        """Return the three vertex positions of the ship triangle."""
         s = self._ship
         a = s["angle"]
         r = self.SHIP_RADIUS
@@ -197,6 +209,7 @@ class LevelDark(Level):
     # ── bullets ────────────────────────────────────────────────────────
 
     def _shoot(self):
+        """Fire a bullet from the ship's tip if off cooldown."""
         s = self._ship
         if not s["alive"] or s["cooldown"] > 0:
             return
@@ -214,6 +227,7 @@ class LevelDark(Level):
     # ── particles / effects ────────────────────────────────────────────
 
     def _emit_explosion(self, pos, color, radius, count=None):
+        """Spawn particles, flash, and screen shake at the given position."""
         if count is None:
             count = max(6, int(radius * 1.6))
         self._particles.burst(
@@ -235,6 +249,7 @@ class LevelDark(Level):
     # ── collision detection ────────────────────────────────────────────
 
     def _check_collisions(self):
+        """Detect and resolve bullet-asteroid and ship-asteroid collisions."""
         ship = self._ship
         # Bullets → asteroids
         for b in self._bullets[:]:
@@ -272,6 +287,7 @@ class LevelDark(Level):
     # ── update ─────────────────────────────────────────────────────────
 
     def handle_event(self, event):
+        """Process keyboard input for ship control and menu navigation."""
         if event.type == pygame.KEYDOWN:
             # Minigame exit: ESC always returns to light level
             if self._minigame_mode and event.key == pygame.K_ESCAPE:
@@ -300,6 +316,7 @@ class LevelDark(Level):
                         print("[CHEAT] asteroids cleared")
 
     def update(self, dt):
+        """Advance the game simulation by the given delta time in ms."""
         dt_sec = dt / 1000.0
 
         # Countdown before game starts (freezes everything)
@@ -421,6 +438,7 @@ class LevelDark(Level):
     # ── draw ───────────────────────────────────────────────────────────
 
     def draw(self):
+        """Render all game objects, effects, and HUD to the screen."""
         # Use frame buffer to support screen shake offset
         target = self._frame_buffer
         target.fill((4, 4, 12))
@@ -602,6 +620,7 @@ class LevelDark(Level):
             self.surface.blit(target, (0, 0))
 
     def get_debug_info(self):
+        """Return a debug string with current level state."""
         return (f"[LEVEL] LevelDark | wave={self.wave} score={self.score} "
                 f"lives={self.lives} "
                 f"asteroids={len(self.asteroids)} bullets={len(self._bullets)}")

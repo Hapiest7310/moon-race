@@ -21,10 +21,10 @@ BUTTON_SPACING = 70
 GRID_CELL_SIZE = 32
 GRID_COLS = SCREEN_WIDTH // GRID_CELL_SIZE
 GRID_ROWS = SCREEN_HEIGHT // GRID_CELL_SIZE
+GROUND_LAYERS = 6
 
 STARTING_MONEY = 1000
 SAVE_DIR = "saves"
-SAVE_FILE = "light_side_save.json"
 
 BUILDING_TYPES = [
     {
@@ -118,7 +118,10 @@ AUDIO_ENABLED = True
 DEFAULT_MUSIC_VOLUME = 0.5
 DEFAULT_SFX_VOLUME = 0.7
 
-debug = True
+DROP_ANIMATION_MS = 500
+
+# ── debug ──────────────────────────────────────────────────────────────
+debug = False
 debug_mouse = True
 debug_grid = False
 debug_widgets = True
@@ -130,8 +133,9 @@ debug_cells = True
 debug_layout = True
 debug_menu = True
 debug_audio = True
-
-DROP_ANIMATION_MS = 500
+debug_cat_state = True
+debug_cat_manual = True
+DEBUG_PRINT_INTERVAL = 500
 
 ENABLE_GLSL = False
 
@@ -152,10 +156,14 @@ DARK2_ENEMY_GROW_MAX_RADIUS = 20
 
 DARK2_DIFFICULTY_RATE = 0.15
 DARK2_DIFFICULTY_MAX_MULTIPLIER = 3.0
-DARK2_SCORE_PER_SECOND = 5
+DARK2_COINS_PER_SECOND = 10
 
-DARK2_SHATTER_TIME = 15000
-DARK2_VICTORY_DELAY = 2000
+DARK2_PLAYER_LIVES = 3
+DARK2_SPAWN_MARGIN = 80
+DARK2_SPAWN_MIN_PLAYER_DIST = 200
+DARK2_PREDICT_OFFSET = 200.0
+DARK2_STAR_COUNT = 160
+DARK2_SHAKE_HIT = 4
 DARK2_BLINK_DURATION = 500
 
 DARK2_BULLET_RADIUS = 3
@@ -208,9 +216,6 @@ CAT_ANIM_FPS = {
     "punch": 6,
     "sleep": 4,
 }
-debug_cat_state = True
-debug_cat_manual = True
-
 cheat_coins = True
 show_grid = False
 
@@ -221,60 +226,63 @@ _alien_requested = False
 
 
 def set_fps(v):
+    """Store the current FPS value."""
     global _fps
     _fps = v
 
 
 def get_fps():
+    """Return the stored FPS value."""
     return _fps
 
 
 def set_save_name(name):
+    """Set the name of the active save file."""
     global _save_name
     _save_name = name
 
 
 def get_save_name():
+    """Return the active save file name."""
     return _save_name
 
 
 def set_mine_requested(v):
+    """Set the flag to request the mining minigame."""
     global _mine_requested
     _mine_requested = v
 
 
 def get_mine_requested():
+    """Return whether the mining minigame was requested."""
     return _mine_requested
 
 
 def clear_mine_requested():
+    """Reset the mining minigame request flag."""
     global _mine_requested
     _mine_requested = False
 
 
 def set_alien_requested(v):
+    """Set the flag to request the alien evasion minigame."""
     global _alien_requested
     _alien_requested = v
 
 
 def get_alien_requested():
+    """Return whether the alien evasion minigame was requested."""
     return _alien_requested
 
 
 def clear_alien_requested():
+    """Reset the alien evasion minigame request flag."""
     global _alien_requested
     _alien_requested = False
 
 
-def get_screen_center():
-    return SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2
-
-
-def get_button_start_position():
-    return SCREEN_WIDTH // 2 - BUTTON_WIDTH // 2, SCREEN_HEIGHT // 2
-
-
 def get_moon_position():
+    """Calculate the centred screen position for the moon sprite."""
     scaled_h = int(FRAME_HEIGHT * MOON_SCALE)
     return (
         SCREEN_WIDTH // 2,
@@ -283,8 +291,14 @@ def get_moon_position():
 
 
 def generate_ground_layers():
+    """Generate the initial ground tile layout for the grid."""
+    cols = list(range(GRID_COLS))
     buildings = []
-    for gy in range(3):
-        for gx in range(GRID_COLS):
-            buildings.append({"type": "Ground", "gx": gx, "gy": gy})
+    for layer in range(min(GROUND_LAYERS, GRID_ROWS)):
+        for gx in cols:
+            buildings.append({"type": "Ground", "gx": gx, "gy": layer})
+        if len(cols) <= 1:
+            break
+        random.shuffle(cols)
+        cols = cols[:max(len(cols) // 2, 1)]
     return buildings

@@ -11,11 +11,12 @@ class ParticleSystem:
     """
 
     def __init__(self):
+        """Initialise an empty particle system."""
         self.particles = []
 
     def add(self, x, y, vx, vy, life, max_life, color, size,
             gravity=0.0, drag_x=1.0, drag_y=1.0):
-        self.particles.append({
+        """Append a single particle with the given initial state."""
             "x": x, "y": y,
             "vx": vx, "vy": vy,
             "life": life, "max_life": max_life,
@@ -52,6 +53,7 @@ class ParticleSystem:
             )
 
     def update(self, dt):
+        """Advance all particle positions, velocities, and lifetimes."""
         dt_sec = dt / 1000.0
         for p in self.particles[:]:
             p["x"] += p["vx"] * dt_sec
@@ -64,6 +66,7 @@ class ParticleSystem:
                 self.particles.remove(p)
 
     def draw(self, surface, alpha_scale=200):
+        """Render all particles as fading, shrinking circles."""
         for p in self.particles:
             t = p["life"] / p["max_life"]
             if t <= 0:
@@ -77,9 +80,4 @@ class ParticleSystem:
                 (int(p["x"]), int(p["y"])), r,
             )
 
-    def clear(self):
-        self.particles.clear()
 
-    @property
-    def alive(self):
-        return len(self.particles) > 0

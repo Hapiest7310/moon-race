@@ -2,6 +2,8 @@ import pygame
 from src import config
 
 class AnimatedSprite(pygame.sprite.Sprite):
+    """A sprite that plays frames from a sprite sheet in sequence."""
+
     def __init__(self, x=None, y=None, sprite_sheet_path=None, frame_width=None, frame_height=None, frame_count=None, animation_speed=None, scale=None):
         super().__init__()
         
@@ -28,6 +30,7 @@ class AnimatedSprite(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(center=(x, y))
     
     def load_frames(self, frame_count, scale):
+        """Extract and optionally scale each frame from the sprite sheet."""
         for i in range(frame_count):
             frame_rect = pygame.Rect(i * self.frame_width, 0, self.frame_width, self.frame_height)
             frame_image = self.sprite_sheet.subsurface(frame_rect)
@@ -36,12 +39,8 @@ class AnimatedSprite(pygame.sprite.Sprite):
                 frame_image = pygame.transform.scale(frame_image, new_size)
             self.frames.append(frame_image)
     
-    def set_position(self, position):
-        x, y = position
-        self.rect = self.image.get_rect(center=(x, y))
-    
     def update(self, dt):
-        self.animation_time += dt
+        """Advance to the next frame when the animation timer expires."""
         
         if self.animation_time >= self.animation_speed:
             self.animation_time = 0

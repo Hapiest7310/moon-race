@@ -9,6 +9,7 @@ _caption = ""
 
 
 def init():
+    """Initialise the spinner's animated moon and font."""
     global _moon, _font
     cx = config.SCREEN_WIDTH // 2
     cy = config.SCREEN_HEIGHT // 2
@@ -21,6 +22,7 @@ def init():
 
 
 def start(caption="Loading..."):
+    """Activate the spinner with a caption message."""
     global _active, _caption
     _active = True
     _caption = caption
@@ -29,6 +31,7 @@ def start(caption="Loading..."):
 
 
 def stop():
+    """Deactivate the spinner."""
     global _active
     _active = False
     if config.debug and config.debug_spinner:
@@ -36,15 +39,18 @@ def stop():
 
 
 def is_active():
+    """Return whether the spinner is currently active."""
     return _active
 
 
 def update(dt):
+    """Advance the spinner animation by the given delta time."""
     if _active and _moon:
         _moon.update(dt)
 
 
 def draw(surface):
+    """Draw the spinner moon and caption onto the surface."""
     if not (_active and _moon and _font):
         return
     surface.fill(config.COLOR_BACKGROUND)

@@ -5,10 +5,12 @@ import src.animations.building_sprites as building_sprites
 
 
 class BuildingMenu(Widget):
+    """A widget for selecting buildings to place on the map."""
     BTN_W = 56
     BTN_H = 48
 
     def __init__(self, rect):
+        """Initialise the building menu with its rectangular area."""
         super().__init__(rect)
         self.selected_index = 0
         self.money = 0
@@ -19,11 +21,13 @@ class BuildingMenu(Widget):
         self._build_buttons()
 
     def _build_buttons(self):
+        """Create placeholder rects for each buildable type."""
         self._button_rects = []
         for _ in self._buildable_types:
             self._button_rects.append(pygame.Rect(0, 0, self.BTN_W, self.BTN_H))
 
     def select_by_key(self, key_number):
+        """Select a building by its numeric key (1-based)."""
         idx = key_number - 1
         if 0 <= idx < len(self._buildable_types):
             self.selected_index = idx
@@ -31,9 +35,11 @@ class BuildingMenu(Widget):
         return False
 
     def get_selected_building(self):
+        """Return the currently selected building type."""
         return self._buildable_types[self.selected_index]
 
     def _get_layout(self):
+        """Calculate the on-screen positions for each building button."""
         n = len(self._button_rects)
         total_w = sum(r.w for r in self._button_rects) + (n - 1) * self._padding
         start_x = (self.rect.width - total_w) // 2
@@ -46,6 +52,7 @@ class BuildingMenu(Widget):
         return positions
 
     def handle_event(self, event):
+        """Handle mouse clicks to select a building from the menu."""
         if not self.visible or event.type != pygame.MOUSEBUTTONDOWN:
             return False
         if not self.rect.collidepoint(event.pos):
@@ -60,6 +67,7 @@ class BuildingMenu(Widget):
         return False
 
     def draw(self, surface):
+        """Draw the building selection buttons onto the surface."""
         if not self.visible:
             return
         positions = self._get_layout()
@@ -113,6 +121,7 @@ class BuildingMenu(Widget):
             surface.blit(cost_text, (cx, cy))
 
     def get_debug_info(self):
+        """Return a debug string including the selected building info."""
         base = super().get_debug_info()
         bt = self.get_selected_building()
         return f"{base} | selected={bt['name']} cost={bt['cost']}"

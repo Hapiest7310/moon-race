@@ -13,8 +13,11 @@ import src.animations.building_sprites as building_sprites
 
 
 class LevelLight(Level):
-    def __init__(self, surface, save_name="default"):
+    """The main light-side moon base construction level."""
+    def __init__(self, surface, save_name="default", dm=None):
+        """Initialize the level, grid, buildings, and effects."""
         super().__init__(surface)
+        self.dm = dm
         building_sprites.load("assets/images/Buildings.png")
         self._save_name = save_name
         self.grid = Grid()
@@ -73,11 +76,20 @@ class LevelLight(Level):
         self._demolish_particles = []
 
         self.cat = Cat(self.grid, lambda: self._occupied_cells)
+
+        if self.dm and config.debug:
+            self.dm.add_source("LVL", self.get_debug_info)
+            self.dm.add_source("CAT", lambda: self.cat.get_debug_info() if config.debug_cat_state else None)
+            if config.debug_widgets:
+                for i, w in enumerate(self.widgets):
+                    self.dm.add_source(f"W{i}", w.get_debug_info)
+
         self.load()
 
     # ── snow overlay ──────────────────────────────────────────────────
 
     def _init_snow(self, count):
+        """Spawn snow particles with random positions and speeds."""
         for _ in range(count):
             self._snow_particles.append({
                 "x": random.uniform(0, config.SCREEN_WIDTH),
@@ -88,6 +100,7 @@ class LevelLight(Level):
             })
 
     def _update_snow(self, dt):
+        """Animate falling snow particles each frame."""
         dt_sec = dt / 1000.0
         for p in self._snow_particles:
             p["y"] -= p["speed"] * dt_sec
@@ -105,6 +118,7 @@ class LevelLight(Level):
                 p["drift"] = random.uniform(-12, 12)
 
     def _draw_snow(self):
+        """Draw the snow overlay onto the level surface."""
         self._snow_overlay.fill((0, 0, 0, 0))
         for p in self._snow_particles:
             r = max(1, int(p["size"]))
@@ -117,6 +131,7 @@ class LevelLight(Level):
     # ── star background ───────────────────────────────────────────────
 
     def _init_stars(self, count):
+        """Spawn star particles with random positions and blink parameters."""
         for _ in range(count):
             self._stars.append({
                 "x": random.uniform(0, config.SCREEN_WIDTH),
@@ -129,6 +144,7 @@ class LevelLight(Level):
             })
 
     def _update_stars(self, dt):
+        """Scroll star positions horizontally each frame."""
         dt_sec = dt / 1000.0
         self._star_time += dt_sec
         for s in self._stars:
@@ -137,6 +153,7 @@ class LevelLight(Level):
                 s["x"] -= config.SCREEN_WIDTH
 
     def _draw_stars(self):
+        """Draw the blinking starfield background."""
         self._star_overlay.clear()
         for s in self._stars:
             blink = math.sin(self._star_time * s["blink_speed"] + s["phase"])
@@ -153,6 +170,7 @@ class LevelLight(Level):
     # ── support check ─────────────────────────────────────────────────
 
     def _is_supported(self, gx, gy, w, h):
+        """Check if a building footprint has support below it."""
         if gy == 0:
             return True
         for dx in range(w):
@@ -162,6 +180,7 @@ class LevelLight(Level):
         return False
 
     def _can_place(self, gx, gy, w, h):
+        """Check if a building can be placed at the given grid position."""
         bt = self.building_menu.get_selected_building()
         if self.money < bt["cost"]:
             return False
@@ -177,6 +196,7 @@ class LevelLight(Level):
     # ── demolition checks ─────────────────────────────────────────────
 
     def _get_building_at(self, gx, gy):
+        """Return the building occupying the given grid cell, if any."""
         for b in self.buildings:
             if (b["gx"] <= gx < b["gx"] + b["width"] and
                 b["gy"] <= gy < b["gy"] + b["height"]):
@@ -184,6 +204,7 @@ class LevelLight(Level):
         return None
 
     def _has_building_on_top(self, building):
+        """Check if another building sits directly above this one."""
         top_y = building["gy"] + building["height"]
         for other in self.buildings:
             if other is building:
@@ -198,6 +219,7 @@ class LevelLight(Level):
     # ── events ────────────────────────────────────────────────────────
 
     def handle_event(self, event):
+        """Process input events for placement, demolition, and toggles."""
         if event.type == pygame.KEYDOWN:
             key = event.key
             if pygame.K_1 <= key <= pygame.K_9 and self.building_menu.visible:
@@ -255,12 +277,14 @@ class LevelLight(Level):
                 self._start_drop(gx, gy, bt)
 
     def _is_over_widget(self, pos):
+        """Check if the mouse position is over any visible widget."""
         for w in self.widgets:
             if w.visible and w.rect.collidepoint(pos):
                 return True
         return False
 
     def _place_building(self, gx, gy, bt):
+        """Place a building at the given grid position immediately."""
         cells = []
         for dy in range(bt["h"]):
             for dx in range(bt["w"]):
@@ -281,6 +305,7 @@ class LevelLight(Level):
         self.save()
 
     def _start_drop(self, gx, gy, bt):
+        """Begin the drop animation for a new building."""
         cells = [(gx + dx, gy + dy) for dy in range(bt["h"]) for dx in range(bt["w"])]
         self._occupied_cells.update(cells)
         self.money -= bt["cost"]
@@ -296,6 +321,7 @@ class LevelLight(Level):
             print(f"[DROP] started {bt['name']} at ({gx},{gy})")
 
     def _complete_drop(self, fb):
+        """Finalize a landing building and add it to the world."""
         bt = fb["bt"]
         self.buildings.append({
             "type": bt["name"],
@@ -312,6 +338,7 @@ class LevelLight(Level):
         self.save()
 
     def _demolish(self, gx, gy):
+        """Remove a building and refund half its cost."""
         building = self._get_building_at(gx, gy)
         if not building:
             return
@@ -337,6 +364,7 @@ class LevelLight(Level):
     # ── demolish explosion ─────────────────────────────────────────────
 
     def _emit_demolish_explosion(self, building):
+        """Spawn particle explosion when a building is demolished."""
         cs = self.grid.cell_size
         cx = (building["gx"] + building["width"] / 2) * cs
         cy = config.SCREEN_HEIGHT - (building["gy"] + building["height"] / 2) * cs
@@ -359,10 +387,12 @@ class LevelLight(Level):
     # ── drop animation ────────────────────────────────────────────────
 
     def _compute_drop_offset(self, progress):
+        """Calculate the easing offset for the drop animation."""
         t = (1 - math.exp(-4 * progress)) / (1 - math.exp(-4))
         return int(-config.SCREEN_HEIGHT * (1 - t))
 
     def _emit_drop_particles(self, fb, offset_y):
+        """Spawn dust particles under a falling building."""
         bt = fb["bt"]
         cs = self.grid.cell_size
         gx, gy = fb["gx"], fb["gy"]
@@ -383,6 +413,7 @@ class LevelLight(Level):
             })
 
     def _update_falling_buildings(self, dt):
+        """Animate falling buildings and their drop particles."""
         for fb in self._falling_buildings[:]:
             fb["progress"] += dt / fb["duration"]
             if fb["progress"] >= 1.0:
@@ -401,6 +432,7 @@ class LevelLight(Level):
                 self._drop_particles.remove(p)
 
     def _draw_falling_buildings(self):
+        """Draw buildings currently in their drop animation."""
         for fb in self._falling_buildings:
             offset_y = fb.get("_offset_y", -config.SCREEN_HEIGHT)
             bt = fb["bt"]
@@ -412,6 +444,7 @@ class LevelLight(Level):
                 self._draw_thrust_flame(fb, offset_y)
 
     def _draw_thrust_flame(self, fb, offset_y):
+        """Draw a flickering thrust flame below a falling building."""
         cs = self.grid.cell_size
         bt = fb["bt"]
         gx, gy = fb["gx"], fb["gy"]
@@ -434,6 +467,7 @@ class LevelLight(Level):
         )
 
     def _update_demolish_particles(self, dt):
+        """Animate demolition explosion particles."""
         dt_sec = dt / 1000.0
         for p in self._demolish_particles[:]:
             p["x"] += p["vx"] * dt_sec
@@ -445,6 +479,7 @@ class LevelLight(Level):
                 self._demolish_particles.remove(p)
 
     def _draw_demolish_particles(self):
+        """Draw demolition explosion particles."""
         for p in self._demolish_particles:
             t = p["life"] / p["max_life"]
             alpha = int(max(0, t * 220))
@@ -458,6 +493,7 @@ class LevelLight(Level):
             )
 
     def _draw_drop_particles(self):
+        """Draw dust particles from falling buildings."""
         for p in self._drop_particles:
             t = p["life"] / p["max_life"]
             alpha = int(max(0, t * 200))
@@ -473,6 +509,7 @@ class LevelLight(Level):
     # ── update ────────────────────────────────────────────────────────
 
     def update(self, dt):
+        """Update all level subsystems and the cat."""
         self._update_snow(dt)
         self._update_stars(dt)
         self._update_falling_buildings(dt)
@@ -493,6 +530,7 @@ class LevelLight(Level):
     # ── draw ──────────────────────────────────────────────────────────
 
     def draw(self):
+        """Render all level layers to the surface."""
         self.surface.fill((0, 0, 0))
         self._draw_stars()
         self._draw_buildings()
@@ -509,20 +547,12 @@ class LevelLight(Level):
         self._draw_mine_button()
         self._draw_alien_button()
         self._draw_money()
-        if config.debug_cat_state:
-            try:
-                state = self.cat.get_state()
-                txt = f"CAT {state['behavior']} ({state['anim']})"
-                font = pygame.font.Font(None, 20)
-                label = font.render(txt, True, (255, 255, 255))
-                self.surface.blit(label, (10, 40))
-            except Exception:
-                pass
 
     def _draw_building(self, surface, bt, px, py, alpha=255):
         """Draw a building — sprite if available, colored rect as fallback."""
         sprite = building_sprites.get(bt["name"])
-        print(f"[DRAW] {bt['name']} sprite={sprite is not None}")
+        if config.debug:
+            print(f"[DRAW] {bt['name']} sprite={sprite is not None}")
         w_px = bt["w"] * config.GRID_CELL_SIZE
         h_px = bt["h"] * config.GRID_CELL_SIZE
         if sprite:
@@ -539,6 +569,7 @@ class LevelLight(Level):
             pygame.draw.rect(surface, (255, 255, 255), rect, 1)
 
     def _draw_buildings(self):
+        """Draw all placed buildings in the level."""
         for b in self.buildings:
             bt = next(t for t in config.BUILDING_TYPES if t["name"] == b["type"])
             # Get pixel position of the building's bottom-left cell
@@ -548,6 +579,7 @@ class LevelLight(Level):
             self._draw_building(self.surface, bt, px, py)
 
     def _draw_hover(self):
+        """Draw placement preview or demolish highlight at the mouse position."""
         if not self._hover_cell:
             return
         gx, gy = self._hover_cell
@@ -586,6 +618,7 @@ class LevelLight(Level):
             self.surface.blit(label, (px + 2, py + 2))
 
     def _draw_mode_toggle(self):
+        """Draw the build/demolish mode toggle button."""
         label = "Build" if self.mode == "CONSTRUCT" else "Demolish"
         bg = (50, 120, 70) if self.mode == "CONSTRUCT" else (160, 60, 60)
         pygame.draw.rect(self.surface, bg, self._mode_rect)
@@ -596,6 +629,7 @@ class LevelLight(Level):
         self.surface.blit(text, (tx, ty))
 
     def _draw_mine_button(self):
+        """Draw the asteroid mining button."""
         bg = (70, 80, 140)
         pygame.draw.rect(self.surface, bg, self._mine_rect)
         pygame.draw.rect(self.surface, (150, 160, 200), self._mine_rect, 1)
@@ -605,6 +639,7 @@ class LevelLight(Level):
         self.surface.blit(label, (tx, ty))
 
     def _draw_alien_button(self):
+        """Draw the alien evasion button."""
         bg = (100, 60, 120)
         pygame.draw.rect(self.surface, bg, self._alien_rect)
         pygame.draw.rect(self.surface, (180, 150, 200), self._alien_rect, 1)
@@ -614,12 +649,14 @@ class LevelLight(Level):
         self.surface.blit(label, (tx, ty))
 
     def _draw_money(self):
+        """Draw the current money counter."""
         text = self._money_font.render(f"$ {self.money}", True, (255, 220, 50))
         self.surface.blit(text, (config.SCREEN_WIDTH - text.get_width() - 20, 20))
 
     # ── save / load ───────────────────────────────────────────────────
 
     def save(self):
+        """Persist the current level state to a JSON file."""
         os.makedirs(config.SAVE_DIR, exist_ok=True)
         path = os.path.join(config.SAVE_DIR, f"{self._save_name}.json")
         data = {
@@ -635,6 +672,7 @@ class LevelLight(Level):
             print(f"[SAVE] saved to {path}")
 
     def load(self):
+        """Load a saved level state from a JSON file."""
         path = os.path.join(config.SAVE_DIR, f"{self._save_name}.json")
         if not os.path.isfile(path):
             return
@@ -667,6 +705,7 @@ class LevelLight(Level):
                 print(f"[LOAD] failed: {e}")
 
     def _ensure_ground(self):
+        """Generate ground tiles if the save has none."""
         has_ground = any(b["type"] == "Ground" for b in self.buildings)
         if has_ground:
             return
@@ -690,4 +729,5 @@ class LevelLight(Level):
             print(f"[LOAD] generated ground tiles for old save")
 
     def get_debug_info(self):
+        """Return a debug string with building count and money."""
         return f"[LEVEL] LevelLight | buildings={len(self.buildings)} money={self.money}"

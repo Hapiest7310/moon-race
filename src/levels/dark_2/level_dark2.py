@@ -11,24 +11,30 @@ _MOVE_LIST = ["dash", "shoot", "explode", "attract"]
 
 
 class LevelDark2(Level):
+    """Bullet-hell survival level with enemy AI on the dark side."""
 
-    def __init__(self, surface, minigame=False):
+    def __init__(self, surface, minigame=False, dm=None):
+        """Initialise the dark level 2 with surface and optional minigame mode."""
         super().__init__(surface)
         self._minigame_mode = minigame
+        self.dm = dm
+        if self.dm and config.debug:
+            self.dm.add_source("DARK2", self.get_debug_info)
         self._init_game()
 
     # ── initialisation ─────────────────────────────────────────────────
 
     def _init_game(self):
+        """Reset all game state for a new round."""
         self.score = 0
+        self._lives = config.DARK2_PLAYER_LIVES
         self.game_over = False
         self._minigame_finished = False
         self._countdown_timer = config.DARK_COUNTDOWN_SECONDS * 1000
         self._countdown_active = True
-        self._mining_timer = config.DARK_MINING_SECONDS * 1000
         self._elapsed_secs = 0.0
 
-        self._stars = StarField(160)
+        self._stars = StarField(config.DARK2_STAR_COUNT)
 
         self._glow_layer = ShaderSurface(config.SCREEN_WIDTH, config.SCREEN_HEIGHT)
         self._particles = ParticleSystem()
@@ -48,34 +54,31 @@ class LevelDark2(Level):
         self._last_collision_time = 0
         self._last_spawn_time = 0
 
-        self._shattered = False
-        self._victory_shown = False
-        self._victory_timer = 0
-
         self._hud_font = pygame.font.Font(None, 32)
         self._big_font = pygame.font.Font(None, 64)
         self._go_font = pygame.font.Font(None, 96)
         self._count_font = pygame.font.Font(None, 240)
 
     def _difficulty_mult(self):
+        """Return the current difficulty multiplier based on elapsed time."""
         t = self._elapsed_secs
         mult = 1.0 + t * config.DARK2_DIFFICULTY_RATE / 60.0
         return min(mult, config.DARK2_DIFFICULTY_MAX_MULTIPLIER)
 
     def is_minigame_done(self):
+        """Return whether the minigame has finished."""
         return self._minigame_finished
-
-    def get_earnings(self):
-        return self.score
 
     # ── enemy spawning ─────────────────────────────────────────────────
 
     def _spawn_enemy(self):
+        """Spawn a new enemy at a random position away from the player."""
         for _ in range(50):
-            x = random.uniform(80, config.SCREEN_WIDTH - 80)
-            y = random.uniform(80, config.SCREEN_HEIGHT - 80)
+            m = config.DARK2_SPAWN_MARGIN
+            x = random.uniform(m, config.SCREEN_WIDTH - m)
+            y = random.uniform(m, config.SCREEN_HEIGHT - m)
             if math.hypot(x - self._player_pos[0],
-                          y - self._player_pos[1]) < 200:
+                          y - self._player_pos[1]) < config.DARK2_SPAWN_MIN_PLAYER_DIST:
                 continue
             break
         else:
@@ -95,6 +98,7 @@ class LevelDark2(Level):
     # ── prediction ─────────────────────────────────────────────────────
 
     def _predict_player_pos(self):
+        """Estimate future player position based on movement history."""
         total = sum(self._move_counts.values())
         if total == 0:
             return list(self._player_pos)
@@ -102,34 +106,15 @@ class LevelDark2(Level):
         prob_left = self._move_counts["left"] / total
         prob_down = self._move_counts["down"] / total
         prob_up = self._move_counts["up"] / total
-        dx = 200.0 * (prob_right - prob_left)
-        dy = 200.0 * (prob_down - prob_up)
+        offset = config.DARK2_PREDICT_OFFSET
+        dx = offset * (prob_right - prob_left)
+        dy = offset * (prob_down - prob_up)
         return [self._player_pos[0] + dx, self._player_pos[1] + dy]
 
     # ── particles / effects ────────────────────────────────────────────
 
-    def _emit_shatter(self, enemy):
-        for _ in range(10):
-            angle = random.uniform(0, 2 * math.pi)
-            speed = random.uniform(60, 200)
-            self._particles.add(
-                enemy["pos"][0], enemy["pos"][1],
-                math.cos(angle) * speed,
-                math.sin(angle) * speed,
-                random.uniform(500, 1200), 1200,
-                enemy["color"],
-                random.uniform(3, 6),
-                gravity=0, drag_x=0.96, drag_y=0.96,
-            )
-        self._particles.burst(
-            enemy["pos"][0], enemy["pos"][1], 8,
-            [(255, 255, 255), enemy["color"]],
-            (50, 150), (300, 600), (2, 5),
-            gravity=0, drag=0.95,
-        )
-        self._shake.trigger(8)
-
     def _emit_explosion_particles(self, pos, color):
+        """Spawn burst particles and screen shake at the given position."""
         self._particles.burst(
             pos[0], pos[1], 20, [color, (255, 200, 50)],
             (80, 250), (400, 1000), (2, 6),
@@ -140,6 +125,7 @@ class LevelDark2(Level):
     # ── collision ──────────────────────────────────────────────────────
 
     def _check_collisions(self):
+        """Detect collisions between the player, enemies, and enemy bullets."""
         for enemy in self._enemies:
             if enemy["state"] == "chase":
                 dx = self._player_pos[0] - enemy["pos"][0]
@@ -157,20 +143,36 @@ class LevelDark2(Level):
                 return
 
     def _on_player_hit(self):
+        """Handle the player being hit: decrement lives and reset enemies."""
         self._last_collision_time = pygame.time.get_ticks()
         self._blink_timer = config.DARK2_BLINK_DURATION
+        self._lives -= 1
+        if config.debug:
+            print(f"[DARK2] player hit, lives left: {self._lives}")
+        if self._lives <= 0:
+            if config.debug:
+                print(f"[DARK2] GAME OVER, score={int(self.score)}")
+            self.game_over = True
+            self._enemies.clear()
+            self._enemy_bullets.clear()
+            return
         self._enemies.clear()
         self._enemy_bullets.clear()
         self._spawn_enemy()
-        self._shake.trigger(4)
+        self._shake.trigger(config.DARK2_SHAKE_HIT)
 
     def handle_event(self, event):
+        """Process keyboard input for menu navigation and minigame exit."""
         if event.type == pygame.KEYDOWN:
             if self._minigame_mode and event.key == pygame.K_ESCAPE:
+                if config.debug:
+                    print(f"[DARK2] ESC pressed, exiting, score={int(self.score)}")
                 self._minigame_finished = True
                 return
-            if (self.game_over or self._victory_shown) and not self._countdown_active:
+            if self.game_over and not self._countdown_active:
                 if self._minigame_mode:
+                    if config.debug:
+                        print(f"[DARK2] key after game_over, exiting, score={int(self.score)}")
                     self._minigame_finished = True
                 elif event.key in (pygame.K_RETURN, pygame.K_SPACE, pygame.K_r):
                     self._init_game()
@@ -178,11 +180,13 @@ class LevelDark2(Level):
     # ── move execution helpers ──────────────────────────────────────────
 
     def _exec_dash(self, enemy):
+        """Begin the dash windup state for the given enemy."""
         enemy["move_data"]["dash_target"] = list(self._player_pos)
         enemy["move_data"]["dash_timer"] = config.DARK2_MOVE_DASH_WINDUP_MS
         enemy["state"] = "dash_windup"
 
     def _update_dash_windup(self, enemy, dt):
+        """Count down the dash windup then transition to dashing."""
         md = enemy["move_data"]
         md["dash_timer"] -= dt
         if md["dash_timer"] <= 0:
@@ -195,6 +199,7 @@ class LevelDark2(Level):
             enemy["state"] = "dash_moving"
 
     def _update_dash_moving(self, enemy, dt_sec, dt):
+        """Move the enemy rapidly toward the dash target."""
         md = enemy["move_data"]
         enemy["pos"][0] += md["dash_dir"][0] * config.DARK2_MOVE_DASH_SPEED * dt_sec
         enemy["pos"][1] += md["dash_dir"][1] * config.DARK2_MOVE_DASH_SPEED * dt_sec
@@ -205,11 +210,13 @@ class LevelDark2(Level):
             enemy["state"] = "chase"
 
     def _exec_shoot(self, enemy):
+        """Begin the shoot windup state for the given enemy."""
         md = enemy["move_data"]
         md["shoot_timer"] = config.DARK2_MOVE_SHOOT_WINDUP_MS
         enemy["state"] = "shoot_windup"
 
     def _update_shoot_windup(self, enemy, dt):
+        """Count down the shoot windup then fire bullets at the player."""
         md = enemy["move_data"]
         md["shoot_timer"] -= dt
         if md["shoot_timer"] <= 0:
@@ -232,6 +239,7 @@ class LevelDark2(Level):
             enemy["state"] = "chase"
 
     def _exec_explode(self, enemy):
+        """Begin the explode windup state for the given enemy."""
         md = enemy["move_data"]
         md["explode_blinks_left"] = config.DARK2_MOVE_EXPLODE_BLINKS
         md["explode_blink_timer"] = config.DARK2_MOVE_EXPLODE_BLINK_INTERVAL_MS
@@ -239,6 +247,7 @@ class LevelDark2(Level):
         enemy["state"] = "explode_windup"
 
     def _update_explode_windup(self, enemy, dt):
+        """Blink then detonate, releasing a ring of bullets."""
         md = enemy["move_data"]
         md["explode_blink_timer"] -= dt
         if md["explode_blink_timer"] <= 0:
@@ -263,6 +272,7 @@ class LevelDark2(Level):
                 enemy["state"] = "chase"
 
     def _exec_attract(self, enemy):
+        """Pair this enemy with another for the attract (merge) move."""
         md = enemy["move_data"]
         md["attract_partner"] = None
         for j, other in enumerate(self._enemies):
@@ -281,6 +291,7 @@ class LevelDark2(Level):
             enemy["state"] = "chase"
 
     def _update_attract_windup(self, enemy, dt_sec, dt):
+        """Move paired enemies together until they merge and explode."""
         md = enemy["move_data"]
         partner = self._enemies[md["attract_partner"]] if md["attract_partner"] is not None else None
         if partner is None or partner["state"] != "attract_windup":
@@ -320,6 +331,7 @@ class LevelDark2(Level):
     # ── move selection ─────────────────────────────────────────────────
 
     def _pick_move(self, enemy):
+        """Choose a random special move for the enemy based on chance weights."""
         available = [m for m in _MOVE_LIST if enemy["move_cooldowns"][m] <= 0]
         if not available:
             return None
@@ -337,6 +349,7 @@ class LevelDark2(Level):
     # ── update ─────────────────────────────────────────────────────────
 
     def update(self, dt):
+        """Advance the game simulation by the given delta time in ms."""
         dt_sec = dt / 1000.0
         now = pygame.time.get_ticks()
 
@@ -347,13 +360,9 @@ class LevelDark2(Level):
                 self._last_collision_time = now
             return
 
-        if not self.game_over and not self._victory_shown:
-            self._mining_timer -= dt
+        if not self.game_over:
             self._elapsed_secs += dt_sec
-            self.score += round(config.DARK2_SCORE_PER_SECOND * dt_sec)
-            if self._mining_timer <= 0:
-                self._mining_timer = 0
-                self.game_over = True
+            self.score = int(self._elapsed_secs) * config.DARK2_COINS_PER_SECOND
 
         self._stars.update(dt)
         self._shake.update(dt)
@@ -395,27 +404,14 @@ class LevelDark2(Level):
         time_since_collision = now - self._last_collision_time
 
         # Enemy growth
-        if time_since_collision > config.DARK2_ENEMY_GROW_INTERVAL and not self._shattered:
+        if time_since_collision > config.DARK2_ENEMY_GROW_INTERVAL and not self.game_over:
             for enemy in self._enemies:
                 enemy["radius"] = min(enemy["radius"] * 1.02, config.DARK2_ENEMY_GROW_MAX_RADIUS)
 
         # Spawn new enemies
-        if now - self._last_spawn_time > config.DARK2_ENEMY_SPAWN_INTERVAL and not self._shattered:
+        if now - self._last_spawn_time > config.DARK2_ENEMY_SPAWN_INTERVAL and not self.game_over:
             self._spawn_enemy()
             self._last_spawn_time = now
-
-        # Victory: shatter on survival
-        if time_since_collision > config.DARK2_SHATTER_TIME and not self._shattered and self._enemies:
-            self._shattered = True
-            for enemy in self._enemies:
-                self._emit_shatter(enemy)
-            self._enemies.clear()
-            self._enemy_bullets.clear()
-
-        if self._shattered and not self._victory_shown:
-            self._victory_timer += dt
-            if self._victory_timer >= config.DARK2_VICTORY_DELAY:
-                self._victory_shown = True
 
         # Enemy AI
         diff = self._difficulty_mult()
@@ -480,12 +476,13 @@ class LevelDark2(Level):
                 self._enemy_bullets.remove(b)
 
         # Collisions
-        if not self.game_over and not self._shattered:
+        if not self.game_over:
             self._check_collisions()
 
     # ── draw ───────────────────────────────────────────────────────────
 
     def draw(self):
+        """Render all game objects, effects, and HUD to the screen."""
         target = self._frame_buffer
         target.fill((4, 4, 12))
         self._stars.draw(target)
@@ -548,18 +545,17 @@ class LevelDark2(Level):
         self._particles.draw(self._glow_layer.surface, alpha_scale=200)
 
         # Player
-        if not self._shattered:
-            visible = True
-            if self._blink_timer > 0 and (int(self._blink_timer / 100) % 2 == 0):
-                visible = False
-            if visible:
-                ppos = (int(self._player_pos[0]), int(self._player_pos[1]))
-                pygame.draw.circle(target, (30, 144, 255), ppos, config.DARK2_PLAYER_RADIUS - 2)
-                pygame.draw.circle(target, (100, 180, 255), ppos, config.DARK2_PLAYER_RADIUS - 2, 2)
-                pygame.draw.circle(
-                    self._glow_layer.surface, (30, 144, 255, 40),
-                    ppos, config.DARK2_PLAYER_RADIUS * 3,
-                )
+        visible = True
+        if self._blink_timer > 0 and (int(self._blink_timer / 100) % 2 == 0):
+            visible = False
+        if visible:
+            ppos = (int(self._player_pos[0]), int(self._player_pos[1]))
+            pygame.draw.circle(target, (30, 144, 255), ppos, config.DARK2_PLAYER_RADIUS - 2)
+            pygame.draw.circle(target, (100, 180, 255), ppos, config.DARK2_PLAYER_RADIUS - 2, 2)
+            pygame.draw.circle(
+                self._glow_layer.surface, (30, 144, 255, 40),
+                ppos, config.DARK2_PLAYER_RADIUS * 3,
+            )
 
         self._glow_layer.blit_to(target, blend=pygame.BLEND_ADD)
 
@@ -567,42 +563,12 @@ class LevelDark2(Level):
         score_text = self._hud_font.render(f"Score: {int(self.score)}", True, (200, 200, 220))
         target.blit(score_text, (20, 20))
 
-        remaining = max(0, self._mining_timer / 1000)
-        timer_text = self._hud_font.render(
-            f"Time: {int(remaining // 60):02}:{int(remaining % 60):02}", True,
-            (220, 200, 100) if remaining <= 10 else (180, 180, 200),
-        )
-        tr = timer_text.get_rect(midtop=(config.SCREEN_WIDTH // 2, 20))
-        target.blit(timer_text, tr)
+        lives_text = self._hud_font.render(f"Lives: {self._lives}", True,
+                                           (255, 100, 100) if self._lives <= 1 else (180, 200, 220))
+        target.blit(lives_text, (20, 48))
 
-        # Victory
-        if self._victory_shown:
-            go_surf = self._go_font.render("VICTORY!", True, (255, 215, 0))
-            go_r = go_surf.get_rect(center=(config.SCREEN_WIDTH // 2,
-                                            config.SCREEN_HEIGHT // 2 - 40))
-            target.blit(go_surf, go_r)
-
-            earned = self._hud_font.render(
-                f"Coins earned: {int(self.score)}", True, (200, 200, 220),
-            )
-            er = earned.get_rect(center=(config.SCREEN_WIDTH // 2,
-                                         config.SCREEN_HEIGHT // 2 + 20))
-            target.blit(earned, er)
-
-            if self._minigame_mode:
-                hint = self._hud_font.render(
-                    "Press Enter, Space, or ESC to return", True, (150, 160, 180),
-                )
-            else:
-                hint = self._hud_font.render(
-                    "Press R, Space, or Enter to restart", True, (150, 160, 180),
-                )
-            hr = hint.get_rect(center=(config.SCREEN_WIDTH // 2,
-                                       config.SCREEN_HEIGHT // 2 + 60))
-            target.blit(hint, hr)
-
-        if self.game_over and not self._victory_shown:
-            go_surf = self._go_font.render("TIME'S UP", True, (200, 180, 80))
+        if self.game_over:
+            go_surf = self._go_font.render("GAME OVER", True, (200, 80, 80))
             go_r = go_surf.get_rect(center=(config.SCREEN_WIDTH // 2,
                                             config.SCREEN_HEIGHT // 2 - 40))
             target.blit(go_surf, go_r)
@@ -639,10 +605,12 @@ class LevelDark2(Level):
             self.surface.blit(target, (0, 0))
 
     def get_debug_info(self):
+        """Return a debug string with current level state."""
         return (f"[LEVEL] LevelDark2 | score={int(self.score)} "
                 f"enemies={len(self._enemies)} "
                 f"diff={self._difficulty_mult():.2f}")
 
 
 def now_ms():
+    """Return the current time in milliseconds from pygame."""
     return pygame.time.get_ticks()

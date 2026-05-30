@@ -1,4 +1,5 @@
-from src.shaders.shader_surface import ShaderSurface
-from src.shaders.gl_shader import GLShader, ShaderProgram
+"""Shader abstraction providing blend-mode compositing surfaces."""
 
-__all__ = ["ShaderSurface", "GLShader", "ShaderProgram"]
+from src.shaders.shader_surface import ShaderSurface
+
+__all__ = ["ShaderSurface"]

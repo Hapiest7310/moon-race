@@ -3,25 +3,31 @@ from src import config
 
 
 class Grid:
+    """Coordinate grid for tile-based placement."""
     def __init__(self):
+        """Initialize the grid dimensions from config."""
         self.cell_size = config.GRID_CELL_SIZE
         self.cols = config.GRID_COLS
         self.rows = config.GRID_ROWS
 
     def grid_to_pixel(self, gx, gy):
+        """Convert grid coordinates to pixel coordinates."""
         px = gx * self.cell_size
         py = config.SCREEN_HEIGHT - (gy + 1) * self.cell_size
         return px, py
 
     def pixel_to_grid(self, px, py):
+        """Convert pixel coordinates to grid coordinates."""
         gx = px // self.cell_size
         gy = (config.SCREEN_HEIGHT - py - 1) // self.cell_size
         return int(gx), int(gy)
 
     def is_in_bounds(self, gx, gy):
+        """Check if grid coordinates are within bounds."""
         return 0 <= gx < self.cols and 0 <= gy < self.rows
 
     def draw(self, surface):
+        """Draw the grid lines and info on the surface."""
         if not (config.show_grid or (config.debug and config.debug_grid)):
             return
         grid_bottom = config.SCREEN_HEIGHT

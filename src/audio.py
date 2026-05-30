@@ -11,6 +11,7 @@ _current_music = None
 
 
 def init():
+    """Initialise the pygame mixer for audio playback."""
     global _inited
     if _inited:
         return
@@ -30,12 +31,14 @@ def init():
 
 
 def load_all():
+    """Load all audio assets (background music tracks)."""
     if not _inited:
         return
     _load_bgm()
 
 
 def _load_bgm():
+    """Scan the music directory and register all BGM tracks."""
     global _bgm_tracks
     _bgm_tracks = {}
     music_dir = config.MUSIC_DIR
@@ -52,29 +55,8 @@ def _load_bgm():
                 print(f"[AUDIO] registered BGM: {name} -> {path}")
 
 
-def play_music(name, loops=-1):
-    global _current_music
-    if not _inited or not config.AUDIO_ENABLED:
-        return
-    if name not in _bgm_tracks:
-        if config.debug and config.debug_audio:
-            print(f"[AUDIO] BGM track not found: {name}")
-        return
-    if _current_music == name and pygame.mixer.music.get_busy():
-        return
-    try:
-        pygame.mixer.music.load(_bgm_tracks[name])
-        pygame.mixer.music.set_volume(_music_volume)
-        pygame.mixer.music.play(loops=loops)
-        _current_music = name
-        if config.debug and config.debug_audio:
-            print(f"[AUDIO] playing BGM: {name}")
-    except pygame.error as e:
-        if config.debug and config.debug_audio:
-            print(f"[AUDIO] failed to play {name}: {e}")
-
-
 def play_music_file(path, loops=-1):
+    """Play a music file, skipping if already the current track."""
     global _current_music
     if not _inited or not config.AUDIO_ENABLED:
         return
@@ -97,6 +79,7 @@ def play_music_file(path, loops=-1):
 
 
 def stop_music(fade_ms=500):
+    """Stop the currently playing music with an optional fade-out."""
     global _current_music
     if not _inited or not config.AUDIO_ENABLED:
         return
@@ -109,31 +92,8 @@ def stop_music(fade_ms=500):
         print("[AUDIO] music stopped")
 
 
-def load_sfx(name, path):
-    if not _inited or not config.AUDIO_ENABLED:
-        return
-    try:
-        sound = pygame.mixer.Sound(path)
-        sound.set_volume(_sfx_volume)
-        _sfx_cache[name] = sound
-        if config.debug and config.debug_audio:
-            print(f"[AUDIO] loaded SFX: {name}")
-    except pygame.error as e:
-        if config.debug and config.debug_audio:
-            print(f"[AUDIO] failed to load SFX {name}: {e}")
-
-
-def play_sfx(name):
-    if not _inited or not config.AUDIO_ENABLED:
-        return
-    if name not in _sfx_cache:
-        if config.debug and config.debug_audio:
-            print(f"[AUDIO] SFX not found: {name}")
-        return
-    _sfx_cache[name].play()
-
-
 def set_music_volume(vol):
+    """Set the music volume, clamped to [0.0, 1.0]."""
     global _music_volume
     _music_volume = max(0.0, min(1.0, vol))
     if _inited:
@@ -141,6 +101,7 @@ def set_music_volume(vol):
 
 
 def set_sfx_volume(vol):
+    """Set the SFX volume, clamped to [0.0, 1.0]."""
     global _sfx_volume
     _sfx_volume = max(0.0, min(1.0, vol))
     for s in _sfx_cache.values():
@@ -148,12 +109,17 @@ def set_sfx_volume(vol):
 
 
 def get_music_volume():
+    """Return the current music volume level."""
     return _music_volume
 
 
 def get_sfx_volume():
+    """Return the current SFX volume level."""
     return _sfx_volume
 
 
-def is_playing():
-    return _inited and pygame.mixer.music.get_busy()
+def get_debug_info():
+    """Return a debug string summarising the audio state."""
+    return (f"[AUDIO] enabled={config.AUDIO_ENABLED} "
+            f"music={'playing' if _inited and pygame.mixer.music.get_busy() else 'stopped'} "
+            f"sfx_cached={len(_sfx_cache)}")

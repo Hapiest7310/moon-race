@@ -15,12 +15,14 @@ class StarField:
     """
 
     def __init__(self, count, twinkle=False):
+        """Initialise the star field with a given number of stars."""
         self.twinkle = twinkle
         self._stars = []
         self._time = 0.0
         self._init(count)
 
     def _init(self, count):
+        """Generate random star positions, sizes, and brightness values."""
         for _ in range(count):
             if self.twinkle:
                 self._stars.append({
@@ -48,6 +50,7 @@ class StarField:
                 })
 
     def update(self, dt):
+        """Scroll stars across the screen based on their speed and mode."""
         dt_sec = dt / 1000.0
         self._time += dt_sec
         if self.twinkle:
@@ -63,6 +66,7 @@ class StarField:
                     s["y"] = random.uniform(0, config.SCREEN_HEIGHT)
 
     def draw(self, surface):
+        """Render all stars as circles with the appropriate brightness or twinkle."""
         if self.twinkle:
             for s in self._stars:
                 blink = math.sin(self._time * s["blink_speed"] + s["phase"])
