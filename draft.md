@@ -94,8 +94,8 @@ Music transitions automatically when entering/exiting minigames. The `play_music
 
 | Team Member | Contributions |
 |-------------|---------------|
-| Htet Wai Aung | Light level implementation: game logic, UI, save/load system, cat integration, building mechanics, grid system. All code except building assets spritesheet and the sprite-to-building mapping logic. |
-| Kuishbaev Artur | Light level building assets: sourced the Buildings.png spritesheet, implemented the cropping logic that maps spritesheet regions to building types in `building_sprites.py`. |
+|  Kuishbaev Artur | Light level implementation: game logic, UI, save/load system, cat integration, building mechanics, grid system. All code except building assets spritesheet and the sprite-to-building mapping logic. |
+|  Htet Wai Aung | Light level building assets: sourced the Buildings.png spritesheet, implemented the cropping logic that maps spritesheet regions to building types in `building_sprites.py`. |
 | Shou Heng | Dark Side 1 (LevelDark): Asteroid mining minigame — player ship control, asteroid physics, collision detection, scoring, countdown timer, mining earnings integration. |
 | Zhao Yan | Dark Side 2 (LevelDark2): Alien evasion minigame — player movement, enemy AI with 5 move types (dash, shoot, explode, attract, chase), lives system, procedural enemy spawning, difficulty scaling. |
 
