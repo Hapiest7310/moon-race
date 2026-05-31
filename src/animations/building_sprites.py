@@ -2,7 +2,7 @@
 building_sprites.py — Loads and caches scaled building sprites from Buildings.png.
 
 Usage:
-    import src.building_sprites as building_sprites
+    import src.animations.building_sprites as building_sprites
     building_sprites.load("assets/images/Buildings.png")
 
     surf = building_sprites.get("House")   # returns a scaled Surface or None
@@ -13,6 +13,7 @@ from src import config
 
 _sheet: pygame.Surface | None = None
 _cache: dict[str, pygame.Surface] = {}
+
 
 def load(path: str) -> None:
     """Load the building sprite sheet and pre-cache all building surfaces."""
@@ -39,6 +40,22 @@ def load(path: str) -> None:
         _sheet = None
 
 
+def _remove_dark_background(surface: pygame.Surface, threshold: int = 45) -> pygame.Surface:
+    """Make dark/black pixels transparent."""
+    result = surface.copy().convert_alpha()
+    arr = pygame.surfarray.pixels3d(result)
+    alpha = pygame.surfarray.pixels_alpha(result)
+
+    # Any pixel where R, G, B are all below threshold → fully transparent
+    dark_mask = (arr[:, :, 0].astype(int) < threshold) & \
+                (arr[:, :, 1].astype(int) < threshold) & \
+                (arr[:, :, 2].astype(int) < threshold)
+    alpha[dark_mask] = 0
+
+    del arr, alpha  # release surfarray locks
+    return result
+
+
 def _preload_all() -> None:
     """Extract and cache a scaled surface for every building type."""
     for bt in config.BUILDING_TYPES:
@@ -54,6 +71,7 @@ def _preload_all() -> None:
             target_h = bt["h"] * config.GRID_CELL_SIZE
             try:
                 cropped = _sheet.subsurface(pygame.Rect(x1, y1, crop_w, crop_h))
+                cropped = _remove_dark_background(cropped)
                 scaled = pygame.transform.smoothscale(cropped, (target_w, target_h))
                 _cache[name] = scaled
                 if config.debug:
@@ -61,6 +79,7 @@ def _preload_all() -> None:
             except ValueError as e:
                 if config.debug:
                     print(f"[SPRITES] ✗ Bad rect for {name}: {e}")
+
 
 def get(name: str) -> pygame.Surface | None:
     """Return a cached scaled surface for a building name, or None if unavailable."""
