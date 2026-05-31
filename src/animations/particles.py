@@ -17,6 +17,7 @@ class ParticleSystem:
     def add(self, x, y, vx, vy, life, max_life, color, size,
             gravity=0.0, drag_x=1.0, drag_y=1.0):
         """Append a single particle with the given initial state."""
+        self.particles.append({
             "x": x, "y": y,
             "vx": vx, "vy": vy,
             "life": life, "max_life": max_life,

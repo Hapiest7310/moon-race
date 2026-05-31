@@ -41,7 +41,7 @@ class AnimatedSprite(pygame.sprite.Sprite):
     
     def update(self, dt):
         """Advance to the next frame when the animation timer expires."""
-        
+        self.animation_time += dt
         if self.animation_time >= self.animation_speed:
             self.animation_time = 0
             self.current_frame = (self.current_frame + 1) % len(self.frames)

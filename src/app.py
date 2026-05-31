@@ -100,6 +100,7 @@ class App:
 
     def _update_transition(self, dt, events):
         """Handle the transition timer then switch to the PLAYING state."""
+        self.moon_sprite.update(dt)
         self._trans_timer -= dt
         if self._trans_timer <= 0:
             spinner.stop()
@@ -108,6 +109,9 @@ class App:
             self.level = LevelLight(self.surface, config.get_save_name(), dm=self.dm)
             audio.play_music_file(config.LIGHT_MUSIC)
             self.state = "PLAYING"
+
+        self.surface.fill(config.COLOR_BACKGROUND)
+        self.sprite_group.draw(self.surface)
 
     def _update_playing(self, dt, events):
         """Handle gameplay logic and input while in the PLAYING state."""
