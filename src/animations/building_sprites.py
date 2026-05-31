@@ -40,19 +40,24 @@ def load(path: str) -> None:
         _sheet = None
 
 
-def _remove_dark_background(surface: pygame.Surface, threshold: int = 45) -> pygame.Surface:
-    """Make dark/black pixels transparent."""
+def _remove_dark_background(surface: pygame.Surface, threshold: int = 60) -> pygame.Surface:
+    """Make only the dark navy background pixels transparent, preserving building details."""
     result = surface.copy().convert_alpha()
     arr = pygame.surfarray.pixels3d(result)
     alpha = pygame.surfarray.pixels_alpha(result)
 
-    # Any pixel where R, G, B are all below threshold → fully transparent
-    dark_mask = (arr[:, :, 0].astype(int) < threshold) & \
-                (arr[:, :, 1].astype(int) < threshold) & \
-                (arr[:, :, 2].astype(int) < threshold)
+    r = arr[:, :, 0].astype(int)
+    g = arr[:, :, 1].astype(int)
+    b = arr[:, :, 2].astype(int)
+
+    # Target the specific dark background: low overall brightness
+    # AND blue channel not dramatically higher than red/green (avoids removing blue building parts)
+    brightness = (r + g + b) / 3
+    dark_mask = (brightness < threshold)
+
     alpha[dark_mask] = 0
 
-    del arr, alpha  # release surfarray locks
+    del arr, alpha
     return result
 
 
